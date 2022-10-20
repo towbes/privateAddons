@@ -5,7 +5,7 @@ return {
 	'hard',
 	'rigid',
 	'embossed',
-	'rigid',
+	'imbued',
 	'runed',
 	'eldritch',
 	'tempered',

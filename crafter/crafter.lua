@@ -14,9 +14,12 @@ local ffi = require 'ffi';
 
 --Tailoring receipes
 local tailorRecipe = require('tailoring');
+local armorRecipe = require('armorcrafting');
 
 local leatherTiers = require('mats-leather');
 local clothTiers = require('mats-cloth');
+local metalTiers = require('mats-metal');
+local stripTiers = require('mats-strips');
 
 local recipeList = T { };
 
@@ -28,6 +31,7 @@ ffi.cdef[[
     typedef void        (__cdecl *move_item_f)(const uint32_t toSlot, const uint32_t fromSlot, const uint32_t count);
     typedef void        (__cdecl *use_slot_f)(const uint32_t slotNum, const uint32_t useType);
 	typedef void        (__cdecl *buy_item_f)(const uint32_t slotNum);
+	typedef void		(__cdecl *interact_f)(const uint32_t objId);
 
 	//Credit to atom0s for reversing this structure
 	typedef struct {
@@ -194,6 +198,13 @@ daoc.items.buy_item = function (slotNum)
     ffi.cast('buy_item_f', hook.pointers.get('daoc.items.buyitem'))(slotNum);
 end
 
+--[[
+* Interact with an object
+--]]
+daoc.items.interact = function (objId)
+    ffi.cast('interact_f', hook.pointers.get('daoc.items.interact'))(objId);
+end
+
 local savePacket = T{ };
 local saveItemId = 0;
 
@@ -208,10 +219,34 @@ local crafter = T{
     findItemNameBuf = {''},
     findItemNameBufSize = 100,
     sortDelay = 0.25,
-	currentTier = 1,
+	currentTier = 0,
     realm_id = 0,
-	server_id = T{0}; -- 0 = live, 1 = eden
+	server_id = T{0}, -- 0 = live, 1 = eden
+	ismoving = false,
+	dest_x = 0,
+	dest_y = 0,
+	stopDist = 50,
+	movementToggle = T { true },
+	movetargetvendor = T { false },
+	movetargetcraft = T { false },
+	buyingMats = false;
+    vendorTargNameBuf = { 'Cedric' },
+    vendorTargNameSize = 20,
+    craftTargNameBuf = { 'Izall' },
+    craftTargNameSize = 20,
+	vendor_xLocBuf = { '22192' },
+    vendor_xLocSize = 10,
+	vendor_yLocBuf = { '25796' },
+    vendor_yLocSize = 10,
+    craft_xLocBuf = { '22895' },
+    craft_xLocSize = 10,
+    craft_yLocBuf = { '24438' },
+    craft_yLocSize = 10,
 };
+
+--pause time to buy mats and interact with vendor
+local tick_holder = hook.time.tick();
+local tick_interval = 5000;
 
 --combo box for current craft
 local selectedCraft = T { 9 };
@@ -232,6 +267,8 @@ local craftStrings = T {
 	'Bountycrafting',
 	'Basic Crafting',
 };
+
+local entList = T{ };
 
 --[[
 * event: load
@@ -266,6 +303,13 @@ hook.events.register('load', 'load_cb', function ()
         error('Failed to locate buy item function pointer.');
     end
 
+    --Interact pointer
+	--Address of signature = game.dll + 0x0002AE06 0x42ae06
+    local ptr = hook.pointers.add('daoc.items.interact', 'game.dll', '558BEC83EC??833D28980401??7E??68????????68????????E8????????5959C9C3833D00829900??75??56', 0,0);
+    if (ptr == 0) then
+        error('Failed to locate interact function pointer.');
+    end
+
     --Start of craftlevel array
 	--Address of signature = game.dll + 0x0001F495
 	--"B9????????8039??74??8B41"
@@ -292,7 +336,7 @@ hook.events.register('load', 'load_cb', function ()
 
 	--Append to the recipe list - index correlates to combobox, selectedCraft[1] + 1
 	recipeList:append(T{'Weaponcraft'})
-	recipeList:append(T{'Armorcraft'})
+	recipeList:append(armorRecipe);
 	recipeList:append(T{'Siegecraft'})
 	recipeList:append(T{'Alchemy'})
 	recipeList:append(T{'Metalworking'})
@@ -316,14 +360,16 @@ end);
 hook.events.register('packet_recv', 'packet_recv_cb', function (e)
     -- OpCode: Message
     if (e.opcode == 0xAF) then
-        if (e.data:contains('fail') or e.data:contains('successfully')) then
+		if (e.data_modified:contains('You have reached')) then
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Reached max'));
+			crafter.isCrafting[1] = false;
+		end
+        if (e.data_modified:contains('fail') or e.data_modified:contains('successfully')) then
 			if (crafter.isCrafting[1]) then
 				doCraft();
 			end
-		elseif (e.data:contains('maximum amount')) then
-			daoc.chat.msg(daoc.chat.message_mode.help, ('Reached max'));
-			crafter.isCrafting[1] = false;
-		elseif (e.data:contains('missing')) then
+		end
+		if (e.data_modified:contains('missing')) then
 			if crafter.isCrafting[1] then
 				checkMats();
 			end
@@ -371,12 +417,56 @@ hook.events.register('command', 'command_cb', function (e)
     if ((args[1]:ieq('test') and e.imode == daoc.chat.input_mode.slash) or args[1]:ieq('/test')) then
         -- Mark the command as handled, preventing the game from ever seeing it..
         e.blocked = true;
-        local selCraft = selectedCraft[1] + 1;
-		daoc.chat.msg(daoc.chat.message_mode.help, ('%s level: %d'):fmt(craftStrings[selCraft], daoc.items.get_craft_level(craftStrings[selCraft])));
-
+		targetByName(crafter.vendorTargNameBuf[1])
+		--get target entity
+		local target = daoc.entity.get(daoc.entity.get_target_index());
+		if target == nil then
+			return;
+		end
+		daoc.items.interact(target.object_id);
         return;
     end
 end);
+
+--[[
+* event: d3d_present
+* desc : Called when the Direct3D device is presenting a scene.
+--]]
+hook.events.register('d3d_present', 'd3d_present_move', function ()
+
+    --get player entity
+    local playerEnt = daoc.entity.get(daoc.entity.get_player_index());
+    if playerEnt == nil then
+        return;
+    end
+
+	if (crafter.ismoving) then
+		local tick_interval = math.random(5000,10000);
+		if (hook.time.tick() >= (tick_holder + tick_interval) ) then	
+			tick_holder = hook.time.tick();
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('Do Tick'));
+			if (crafter.dest_x == 0 or crafter.dest_y == 0) then return; end
+			local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
+			daoc.chat.msg(daoc.chat.message_mode.help, ('p: %d %d - t %d %d - d %d'):fmt(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y, dist) );
+			if (dist < crafter.stopDist) then
+				
+				crafter.ismoving = false;
+				--crafter.dest_x = 0;
+				--crafter.dest_y = 0;
+				--sleep 3 seconds to stop
+				if (crafter.buyingMats) then
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Buying Mats'));
+					checkMats();
+				else
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Done running do craft'));
+					doCraft();
+				end
+				
+			end
+		end
+	end		
+end);
+
 
 --[[
 * event: d3d_present
@@ -391,7 +481,7 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				imgui.Text('Crafter Main Menu - Start with empty inventory');
 				imgui.Checkbox('Toggle', crafter.isCrafting);
 				imgui.SameLine();
-				imgui.Checkbox('Toggle', crafter.logItemId);
+				imgui.Checkbox('Log ItemId', crafter.logItemId);
 
 				if (crafter.isCrafting[1]) then
 					imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Crafting');
@@ -408,6 +498,54 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				end
 				if (imgui.Button('Start')) then
 					doCraft();
+				end
+				imgui.Checkbox('Toggle Movement', crafter.movementToggle);
+				if (crafter.movementToggle[1]) then
+					imgui.Checkbox('Toggle Vendor Move Type', crafter.movetargetvendor);
+					if (crafter.movetargetvendor[1]) then
+						imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Moving vendor with target');
+					else
+						imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Moving vendor with loc');
+					end
+					imgui.Text("Target:")
+					imgui.SameLine();
+					imgui.PushItemWidth(200);
+					imgui.InputText("##vendorname", crafter.vendorTargNameBuf, crafter.vendorTargNameSize);
+					imgui.SameLine();
+					imgui.Text("Vendor target name is required");
+					imgui.Text("X:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##vendorx", crafter.vendor_xLocBuf, crafter.vendor_xLocSize);
+					imgui.SameLine();
+					imgui.Text("Y:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##vendory", crafter.vendor_yLocBuf, crafter.vendor_yLocSize);
+
+
+					imgui.Checkbox('Toggle Craft Spot Move Type', crafter.movetargetcraft);
+					imgui.SameLine();
+					if (crafter.movetargetcraft[1]) then
+						imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Moving craft loc with target');
+					else
+						imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Moving craft loc with loc');
+					end
+						imgui.Text("Target:")
+						imgui.SameLine();
+						imgui.PushItemWidth(200);
+						imgui.InputText("##craftname", crafter.craftTargNameBuf, crafter.craftTargNameSize);
+						imgui.Text("X:")
+						imgui.SameLine();
+						imgui.PushItemWidth(100);
+						imgui.InputText("##craftx", crafter.craft_xLocBuf, crafter.craft_xLocSize);
+						imgui.SameLine();
+						imgui.Text("Y:")
+						imgui.SameLine();
+						imgui.PushItemWidth(100);
+						imgui.InputText("##crafty", crafter.craft_yLocBuf, crafter.craft_yLocSize);
+				else
+					imgui.Text("Merchant window must be open");
 				end
 				imgui.EndTabItem();
 			end
@@ -477,7 +615,7 @@ end);
 
 function sellByName(itemName)
 	--only sell 2nd bag+
-	for i = 48, 79 do
+	for i = 40, 79 do
 		local item = daoc.items.get_item(i)
 		if (item ~= nil and item.name:len() > 0) then
 			if item.name:ieq(itemName) then
@@ -522,11 +660,13 @@ function get_current_craft()
 	if clvl > 99 and clvl < 1000 then
 		tier = tonumber(tostring(clvl)[1]) + 1;
 	elseif clvl >= 1000 then
-		tier = 10;
+		tier = 11;
 	end
 	--if our tier switched, sell our entire inventory
-	if tier > crafter.currentTier then
+	if crafter.currentTier > 0 and tier > crafter.currentTier then
 		sellBySlots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]);
+		crafter.currentTier = tier;
+	else
 		crafter.currentTier = tier;
 	end
 	--remove the 100s place
@@ -546,7 +686,7 @@ function get_current_craft()
 	if itemId > 0 and currentCraft > 0 then
 		return tier, currentCraft;
 	else
-		daoc.chat.msg(daoc.chat.message_mode.help, ('ItemId not found. Clvl %d, realm %d, tier %d'):fmt(clvl, crafter.realm_id, selectedTier[1]));
+		daoc.chat.msg(daoc.chat.message_mode.help, ('ItemId not found. Clvl %d, realm %d, tier %d'):fmt(clvl, crafter.realm_id, tier));
 		return nil, nil;
 	end
 end
@@ -562,10 +702,30 @@ function doCraft ()
 		--Try to sell all tier items just in case we had extras of others
 		local serverId = crafter.server_id[1] + 1;
 		if (tempSlots <= 2) then
+			--Make sure we are at vendor
+			if (crafter.movementToggle[1]) then
+				if (not sellDistCheck()) then
+					return;
+				else
+					targetByName(crafter.vendorTargNameBuf[1])
+					--get target entity
+					local target = daoc.entity.get(daoc.entity.get_target_index());
+					if target == nil then
+						return;
+					end
+					daoc.items.interact(target.object_id);
+				end
+			end
 			for x = 1, recipeList[selCraft][serverId][crafter.realm_id][tier]:len() do
 				sellByName(recipeList[selCraft][serverId][crafter.realm_id][tier][x].name);
 			end
+		elseif (crafter.movementToggle[1]) then
+			--check that we are at the craft spot
+			if (not craftDistCheck()) then
+				return;
+			end
 		end
+		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %d'):fmt(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].itemId));
 		local sendPkt = struct.pack('I4', recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].itemId):totable();
 		sendCraft(sendPkt);
 	else
@@ -578,7 +738,106 @@ function sendCraft(packet)
 	daoc.game.send_packet(0xED, packet, 0);
 end
 
+function sellDistCheck() 
+	--get player entity
+	local playerEnt = daoc.entity.get(daoc.entity.get_player_index());
+	if playerEnt == nil then
+		return;
+	end
+	
+	if (crafter.movetargetvendor[1]) then
+		targetByName(crafter.vendorTargNameBuf[1]);
+		--get target
+		local target = daoc.entity.get(daoc.entity.get_target_index());
+		if target == nil then
+			return false;
+		end
+		
+		local dist = math.distance2d(playerEnt.x, playerEnt.y, target.x, target.y);
+		if (dist > crafter.stopDist) then
+			crafter.dest_x = target.loc_x;
+			crafter.dest_y = target.loc_y;
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/movetarget');
+			crafter.ismoving = true;
+			return false;
+		else
+			return true;
+		end
+	else 
+		crafter.dest_x = crafter.vendor_xLocBuf[1];
+		crafter.dest_y = crafter.vendor_yLocBuf[1];
+		local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
+		if (dist > crafter.stopDist) then
+			crafter.ismoving = true;
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, ('/movexy %d %d'):fmt(crafter.dest_x, crafter.dest_y));
+			return false;
+		else
+			return true;
+		end
+	end
+	return true;
+end
+
+function craftDistCheck() 
+	--get player entity
+	local playerEnt = daoc.entity.get(daoc.entity.get_player_index());
+	if playerEnt == nil then
+		return;
+	end
+	
+	if (crafter.movetargetcraft[1]) then
+		targetByName(crafter.craftTargNameBuf[1]);
+		--get target
+		local target = daoc.entity.get(daoc.entity.get_target_index());
+		if target == nil then
+			return false;
+		end
+		
+		local dist = math.distance2d(playerEnt.x, playerEnt.y, target.x, target.y);
+		if (dist > crafter.stopDist) then
+			crafter.ismoving = true;
+			crafter.dest_x = target.loc_x;
+			crafter.dest_y = target.loc_y;
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('%d %d'):fmt(target.x, target.y));
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/movetarget');
+			return false;
+		else
+			return true;
+		end
+	else
+		crafter.dest_x = crafter.craft_xLocBuf[1];
+		crafter.dest_y = crafter.craft_yLocBuf[1];
+		local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
+		if (dist > crafter.stopDist) then
+			crafter.ismoving = true;
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, ('/movexy %d %d'):fmt(crafter.dest_x, crafter.dest_y));
+			return false;
+		else
+			return true;
+		end
+	end
+	return true;
+end
+
 function checkMats()
+	--Make sure we are at vendor
+	if (crafter.movementToggle[1]) then
+		if (not sellDistCheck()) then
+			crafter.buyingMats = true;
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Too far from vendor to buy mats'));
+			return;
+		else
+			targetByName(crafter.vendorTargNameBuf[1])
+			--get target entity
+			local target = daoc.entity.get(daoc.entity.get_target_index());
+			if target == nil then
+				return;
+			end
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Interact %s - %d'):fmt(target.name, target.object_id));
+			daoc.items.interact(target.object_id);
+		end
+	end
+
 	local selCraft = selectedCraft[1] + 1;
 	--What materials do we need?
 	local tier, currentCraft = get_current_craft();
@@ -588,16 +847,29 @@ function checkMats()
 	local serverId = crafter.server_id[1] + 1;
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('%d, %d, %d, %d, %d'):fmt(selCraft, serverId, crafter.realm_id, tier, currentCraft));
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('name: %s'):fmt(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft]));
+	--Sell before we buy
+	sellBySlots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]);
 	for k,v in pairs(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].mats) do
-		--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s'):fmt(v));
+		daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(v, k	));
 		local matCount = v*30;
 		while matCount > 100 do
-			buyMats(tier, k, 100);
-			matCount = matCount - 100;
+			if (buyMats(tier, k, 100)) then
+				matCount = matCount - 100;
+			else
+				return;
+			end
 		end
 		if matCount > 0 and matCount < 100 then
-			buyMats(tier, k, matCount);
+			if not buyMats(tier, k, matCount) then
+				return;
+			end
 		end
+		coroutine.sleep(1);
+	end
+
+	crafter.buyingMats = false;
+	if crafter.movementToggle[1] then
+		coroutine.sleep(math.random(5, 10));
 	end
 
 	doCraft();
@@ -608,33 +880,73 @@ function buyMats(tier, type, count)
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s'):fmt(type));
 	local itemName = '';
 	local slotNum = nil;
+	if tier > 10 then tier = 10; end;
 	if type:ieq('leather') then
 		itemName = leatherTiers[tier] .. ' leather square';
 		if (itemName:len() > 0) then
 			slotNum = daoc.items.get_merchant_slot(itemName);
 		else
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build leather itemname'));
+			return false;
 		end
 		if slotNum ~= nil then
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
 			buyItem(slotNum, count)
 		else
 			daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
+			return false;
 		end
+		return true;
 	elseif type:ieq('thread') then
 		itemName = clothTiers[tier] .. ' heavy thread';
 		if (itemName:len() > 0) then
 			slotNum = daoc.items.get_merchant_slot(itemName);
 		else
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build cloth itemname'));
+			return false;
 		end
 		if slotNum ~= nil then
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
 			buyItem(slotNum, count)
 		else
 			daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
+			return false;
 		end
+		return true;
+	elseif type:ieq('metal') then
+		itemName = metalTiers[tier] .. ' metal bars';
+		if (itemName:len() > 0) then
+			slotNum = daoc.items.get_merchant_slot(itemName);
+		else
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build metal itemname'));
+			return false;
+		end
+		if slotNum ~= nil then
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
+			buyItem(slotNum, count)
+		else
+			daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
+			return false;
+		end
+		return true;
+	elseif type:ieq('strip') then
+		itemName = stripTiers[tier] .. ' strips';
+		if (itemName:len() > 0) then
+			slotNum = daoc.items.get_merchant_slot(itemName);
+		else
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build strip itemname'));
+			return false;
+		end
+		if slotNum ~= nil then
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
+			buyItem(slotNum, count)
+		else
+			daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
+			return false;
+		end
+		return true;
 	end
+	return false;
 end
 
 function buyItem(slot, count)
@@ -645,7 +957,7 @@ function buyItem(slot, count)
 
 	if (daoc.items.get_merchantitem(0) == nil) then 
 		daoc.chat.msg(daoc.chat.message_mode.help, ('You must open merchant window'));
-		return; 
+		return;
 	end
 
     --get player object for realm id
@@ -665,4 +977,18 @@ function buyItem(slot, count)
 	--pack as big endian
 	local sendpkt = struct.pack('>I4I4I2I2BBBB', player.loc_x, player.loc_y, 04, slot, count, 0, 0, 0):totable();
 	daoc.game.send_packet(0x78, sendpkt, 0);
+	return true;
+end
+
+function targetByName(targName)
+	for i = 1, daoc.entity.get_count() do
+		if (daoc.entity.is_valid(i)) then
+			local ent = daoc.entity.get(i);
+			if (ent ~= nil and i ~= daoc.entity.get_player_index()) then
+				if (ent.name:lower():ieq(targName)) then
+					daoc.entity.set_target(i, 1);
+				end
+			end
+		end
+	end
 end
