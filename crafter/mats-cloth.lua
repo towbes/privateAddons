@@ -2,7 +2,7 @@ return {
 	'woolen',
 	'linen',
 	'brocade',
-	'silk heavy',
+	'silk',
 	'gossamer',
 	'sylvan',
 	'seamist',
