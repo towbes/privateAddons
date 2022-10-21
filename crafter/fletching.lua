@@ -105,34 +105,35 @@ return T {
 			T{
 				T{level = 10, name = 'rough clout blunt arrows', mats = T{T{ name = 'rowan wooden boards', value = 1},T{ name = 'crow feathers', value = 1},},itemId = 9502},
 				T{level = 45, name = 'rough blunt arrows', mats = T{T{ name = 'rowan wooden boards', value = 3},T{ name = 'hawk feathers', value = 1},},itemId = 9758},
+				T{level = 80, name = 'clout blunt arrows', mats = T{T{ name = 'rowan wooden boards', value = 2},T{ name = 'hawk feathers', value = 2},},itemId = 10014},
 			},
 			--Tier 2
 			T{
-				T{level = 15, name = 'tanned brea gloves', mats = T{leather = 3, thread = 2}, itemId = 47388},
-				T{level = 45, name = 'tanned brea boots', mats = T{leather = 3, thread = 2}, itemId = 49948},
-				T{level = 65, name = 'tanned constaic boots', mats = T{leather = 5, thread = 2}, itemId = 65308},
-				T{level = 95, name = 'tanned cruaigh gloves', mats = T{leather = 10, thread = 4}, itemId = 12573},
+				T{level = 10, name = 'rough clout bodkin arrows', mats = T{T{ name = 'rowan wooden boards', value = 3},T{ name = 'hawk feathers', value = 1},T{ name = 'copper metal bars', value = 1},},itemId = 11806},
+				T{level = 45, name = 'rough bodkin arrows', mats = T{T{ name = 'rowan wooden boards', value = 2},T{ name = 'hawk feathers', value = 3},T{ name = 'copper metal bars', value = 2},},itemId = 12062},
+				T{level = 80, name = 'clout bodkin arrows', mats = T{T{ name = 'elm wooden boards', value = 1},T{ name = 'hawk feathers', value = 1},T{ name = 'copper metal bars', value = 2},},itemId = 12318},
+
 			},
 			--Tier 3
 			T{
-				T{level = 15, name = 'cured brea gloves', mats = T{leather = 3, thread = 2}, itemId = 47644},
-				T{level = 45, name = 'cured brea boots', mats = T{leather = 3, thread = 2}, itemId = 50204},
-				T{level = 65, name = 'cured constaic boots', mats = T{leather = 5, thread = 2}, itemId = 29},
-				T{level = 95, name = 'cured cruaigh gloves', mats = T{leather = 10, thread = 4}, itemId = 12829},
+				T{level = 15, name = 'rough flight bodkin arrows', mats = T{T{ name = 'elm wooden boards', value = 2},T{ name = 'gull feathers', value = 1},T{ name = 'copper metal bars', value = 2},},itemId = 12574},
+				T{level = 45, name = 'rough broadhead arrows', mats = T{T{ name = 'elm wooden boards', value = 2},T{ name = 'hawk feathers', value = 3},T{ name = 'copper metal bars', value = 2},},itemId = 14366},
+				T{level = 80, name = 'clout broadhead arrows', mats = T{T{ name = 'elm wooden boards', value = 2},T{ name = 'hawk feathers', value = 2},T{ name = 'ferrite metal bars', value = 1},},itemId = 14622},
+
 			},
 			--Tier 4
 			T{
-				T{level = 15, name = 'hard brea gloves', mats = T{leather = 3, thread = 2}, itemId = 47900},
-				T{level = 45, name = 'hard brea boots', mats = T{leather = 3, thread = 2}, itemId = 50460},
-				T{level = 65, name = 'hard constaic boots', mats = T{leather = 5, thread = 2}, itemId = 285},
-				T{level = 95, name = 'hard cruaigh gloves', mats = T{leather = 10, thread = 4}, itemId = 13085},
+				T{level = 15, name = 'rough flight broadhead arrows', mats = T{T{ name = 'oaken wooden boards', value = 1},T{ name = 'gull feathers', value = 3},T{ name = 'ferrite metal bars', value = 1},},itemId = 14878},
+				T{level = 50, name = 'standard broadhead arrows', mats = T{T{ name = 'oaken wooden boards', value = 1},T{ name = 'gull feathers', value = 2},T{ name = 'ferrite metal bars', value = 1},},itemId = 15134},
+				T{level = 85, name = 'footed clout broadhead arrows', mats = T{T{ name = 'oaken wooden boards', value = 1},T{ name = 'cockatrice feathers', value = 1},T{ name = 'ferrite metal bars', value = 2},},itemId = 15390},
+
 			},
 			--Tier 5
 			T{
-				T{level = 15, name = 'rigid brea gloves', mats = T{leather = 3, thread = 2}, itemId = 48156},
-				T{level = 45, name = 'rigid brea boots', mats = T{leather = 3, thread = 2}, itemId = 50716},
-				T{level = 65, name = 'rigid constaic boots', mats = T{leather = 5, thread = 2}, itemId = 541},
-				T{level = 95, name = 'rigid cruaigh gloves', mats = T{leather = 10, thread = 4}, itemId = 13341},
+				T{level = 20, name = 'flight broadhead arrows', mats = T{T{ name = 'ironwood wooden boards', value = 1},T{ name = 'cockatrice feathers', value = 1},T{ name = 'quartz metal bars', value = 1},},itemId = 15646},
+				T{level = 55, name = 'footed broadhead arrows', mats = T{T{ name = 'ironwood wooden boards', value = 1},T{ name = 'cockatrice feathers', value = 1},T{ name = 'quartz metal bars', value = 1},},itemId = 15902},
+				T{level = 90, name = 'keen footed flight broadhead arrows', mats = T{T{ name = 'heartwood wooden boards', value = 1},T{ name = 'dolomite metal bars', value = 1},T{ name = 'phoenix feathers', value = 1},},itemId = 16158},
+				
 			},
 			--Tier 6
 			T{
