@@ -103,10 +103,8 @@ return T {
 		T{	--hib
 			--tier 1
 			T{
-				T{level = 15, name = 'rawhide brea gloves', mats = T{leather = 3, thread = 2}, itemId = 47132},
-				T{level = 45, name = 'rawhide brea boots', mats = T{leather = 3, thread = 2}, itemId = 49692},
-				T{level = 65, name = 'rawhide constaic boots', mats = T{leather = 5, thread = 2}, itemId = 65052},
-				T{level = 95, name = 'rawhide cruaigh gloves', mats = T{leather = 10, thread = 4}, itemId = 12317},
+				T{level = 10, name = 'rough clout blunt arrows', mats = T{T{ name = 'rowan wooden boards', value = 1},T{ name = 'crow feathers', value = 1},},itemId = 9502},
+				T{level = 45, name = 'rough blunt arrows', mats = T{T{ name = 'rowan wooden boards', value = 3},T{ name = 'hawk feathers', value = 1},},itemId = 9758},
 			},
 			--Tier 2
 			T{

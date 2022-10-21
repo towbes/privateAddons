@@ -15,6 +15,7 @@ local ffi = require 'ffi';
 --Tailoring receipes
 local tailorRecipe = require('tailoring');
 local armorRecipe = require('armorcrafting');
+local fletchRecipe = require('fletching');
 
 local leatherTiers = require('mats-leather');
 local clothTiers = require('mats-cloth');
@@ -210,6 +211,7 @@ local saveItemId = 0;
 
 -- inventory Variables
 local crafter = T{
+	simpleToggle = T { false },
     isCrafting = T{ false, },
 	logItemId = T { false, },
     minSlotBuf = { '40' },
@@ -366,11 +368,16 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
 		end
         if (e.data_modified:contains('fail') or e.data_modified:contains('successfully')) then
 			if (crafter.isCrafting[1]) then
-				doCraft();
+				if (crafter.simpleToggle[1]) then
+					local sendPkt = struct.pack('I4',saveItemId):totable();
+					sendCraft(sendPkt);
+				else
+					doCraft();	
+				end
 			end
 		end
 		if (e.data_modified:contains('missing')) then
-			if crafter.isCrafting[1] then
+			if not crafter.simpleToggle[1] and crafter.isCrafting[1] then
 				checkMats();
 			end
 		end
@@ -548,6 +555,22 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 					imgui.Text("Merchant window must be open");
 				end
 				imgui.EndTabItem();
+			end
+			if (imgui.BeginTabItem("Repeat Only")) then
+				imgui.Checkbox('Simple Toggle', crafter.simpleToggle);
+
+				if (crafter.simpleToggle[1]) then
+					crafter.isCrafting[1] = true;
+				else
+					crafter.isCrafting[1] = false;
+				end
+
+				if (crafter.isCrafting[1]) then
+					imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Crafting');
+				else
+					imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Not Crafting');
+				end
+				imgui.EndTabItem()
 			end
 			if (imgui.BeginTabItem("Inventory Tools")) then
 				imgui.Text(("Backpack Start: %d , End: %d"):fmt(daoc.items.slots.vault_min, daoc.items.slots.vault_max));
