@@ -11,16 +11,14 @@ require 'daoc';
 
 local imgui = require 'imgui';
 local ffi = require 'ffi';
+local settings  = require 'settings';
 
 --Tailoring receipes
 local tailorRecipe = require('tailoring');
 local armorRecipe = require('armorcrafting');
 local fletchRecipe = require('fletching');
+local spellRecipe = require('spellcrafting');
 
-local leatherTiers = require('mats-leather');
-local clothTiers = require('mats-cloth');
-local metalTiers = require('mats-metal');
-local stripTiers = require('mats-strips');
 
 local recipeList = T { };
 
@@ -57,7 +55,10 @@ ffi.cdef[[
         char        name_[64];          // The craft name.
 		uint32_t	level_mod;			// actual level = level_mod * 0x100 + level
 		uint32_t    level;              // The craft level. [ie. Unique id if used.]
-		char		unknown[96];		// unknown for now
+		uint32_t	index;				//index in TDL?
+		char		unknown1[24];
+		uint32_t	unknownIndex;
+		char		unknown[64];		// unknown for now
 	} craft_t;
 
 	typedef struct {
@@ -210,7 +211,7 @@ local savePacket = T{ };
 local saveItemId = 0;
 
 -- inventory Variables
-local crafter = T{
+local default_settings = T{
 	simpleToggle = T { false },
     isCrafting = T{ false, },
 	logItemId = T { false, },
@@ -222,38 +223,45 @@ local crafter = T{
     findItemNameBufSize = 100,
 	craftLvlDiffBuf = { '20' },
 	craftLvlDiffSize = 10,
+	numMatsBuf = {'30'},
+	numMatsSize = 10,
     sortDelay = 0.25,
 	currentTier = 0,
     realm_id = 0,
-	server_id = T{0}, -- 0 = live, 1 = eden
+	server_id = T{1}, -- 0 = live, 1 = eden
 	ismoving = false,
 	dest_x = 0,
 	dest_y = 0,
 	stopDist = 50,
 	movementToggle = T { true },
-	movetargetvendor = T { true },
-	movetargetcraft = T { true },
+	movetargetvendor = T { false },
+	movetargetcraft = T { false },
 	buyingMats = false;
-    vendorTargNameBuf = { 'Cedric' },
+    vendorTargNameBuf = { 'Alastar MacDonnell' },
     vendorTargNameSize = 20,
-    craftTargNameBuf = { 'Izall' },
+    craftTargNameBuf = { 'Alchemy Table' },
     craftTargNameSize = 20,
-	vendor_xLocBuf = { '22192' },
+	vendor_xLocBuf = { '28053' },
     vendor_xLocSize = 10,
-	vendor_yLocBuf = { '25796' },
+	vendor_yLocBuf = { '51726' },
     vendor_yLocSize = 10,
-    craft_xLocBuf = { '22895' },
+    craft_xLocBuf = { '28355' },
     craft_xLocSize = 10,
-    craft_yLocBuf = { '24438' },
+    craft_yLocBuf = { '53136' },
     craft_yLocSize = 10,
+	haveMats = false,
+	currTier = 0,
+	currCraft = 0,
 };
+
+local crafter = settings.load(default_settings);
 
 --pause time to buy mats and interact with vendor
 local tick_holder = hook.time.tick();
 local tick_interval = 5000;
 
 --combo box for current craft
-local selectedCraft = T { 10 };
+local selectedCraft = T { 11 };
 local craftStrings = T {
 	'Weaponcraft',
 	'Armorcraft',
@@ -273,6 +281,19 @@ local craftStrings = T {
 };
 
 local entList = T{ };
+
+--[[
+* Event invoked when a settings table has been changed within the settings library.
+*
+* Note: This callback only affects the default 'settings' table.
+--]]
+settings.register('settings', 'settings_update', function (e)
+    -- Update the local copy of the 'settings' settings table..
+    crafter = e;
+
+    -- Ensure settings are saved to disk when changed..
+    settings.save();
+end);
 
 --[[
 * event: load
@@ -350,7 +371,7 @@ hook.events.register('load', 'load_cb', function ()
 	recipeList:append(T{'Herbcraft'})
 	recipeList:append(tailorRecipe);
 	recipeList:append(fletchRecipe);
-	recipeList:append(T{'Spellcrafting'})
+	recipeList:append(spellRecipe)
 	recipeList:append(T{'Woodworking'})
 	recipeList:append(T{'Bountycrafting'})
 	recipeList:append(T{'Basic Crafting'})
@@ -358,6 +379,18 @@ hook.events.register('load', 'load_cb', function ()
 	--load movement addon
 	daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/addon load hashiru');
 
+end);
+
+--[[
+* event: unload
+* desc : Called when the addon is being unloaded.
+--]]
+hook.events.register('unload', 'unload_cb', function ()
+	--turn off
+	crafter.isCraft[1] = false;
+	crafter.simpleToggle[1] = false;
+	--save settings when unloading
+	settings.save();
 end);
 
 --[[
@@ -383,6 +416,7 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
 		end
 		if (e.data_modified:contains('missing')) then
 			if not crafter.simpleToggle[1] and crafter.isCrafting[1] then
+				crafter.haveMats = false;
 				checkMats();
 			end
 		end
@@ -429,13 +463,12 @@ hook.events.register('command', 'command_cb', function (e)
     if ((args[1]:ieq('test') and e.imode == daoc.chat.input_mode.slash) or args[1]:ieq('/test')) then
         -- Mark the command as handled, preventing the game from ever seeing it..
         e.blocked = true;
-		targetByName(crafter.vendorTargNameBuf[1])
-		--get target entity
-		local target = daoc.entity.get(daoc.entity.get_target_index());
-		if target == nil then
-			return;
+		for i = 0, 14 do
+			local craft = daoc.items.get_craft(i);
+			if craft ~= nil then
+				daoc.chat.msg(daoc.chat.message_mode.help, ('craft: %s, index: %d'):fmt(craft.name, craft.unknownIndex));
+			end
 		end
-		daoc.items.interact(target.object_id);
         return;
     end
 end);
@@ -508,12 +541,30 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				if (imgui.Combo('##selCraft', craft_pos, 'Weaponcraft\0Armorcraft\0Siegecraft\0Alchemy\0Metalworking\0Leatherworking\0Clothworking\0Gemcutting\0Herbcraft\0Tailoring\0Fletching\0Spellcrafting\0Woodworking\0Bountycrafting\0Basic Crafting\0\0')) then
 					selectedCraft[1] = craft_pos[1];
 				end
-				if (imgui.Button('Start')) then
+				if (imgui.Button('Start', { 55, 20 })) then
 					doCraft();
 				end
+				imgui.SameLine();
+                if (imgui.Button('Save', { 55, 20 })) then
+                    settings.save();
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Settings saved'));
+                end
+				imgui.SameLine();
+                if (imgui.Button('Reload', { 55, 20 })) then
+                    settings.reload();
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Settings reloaded'));
+                end
+				imgui.SameLine();
+                if (imgui.Button('Reset', { 55, 20 })) then
+                    settings.reset();
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Settings reset'));
+                end
 				imgui.Text('Craft Lvl Diff:');
 				imgui.SameLine();
 				imgui.InputText('##craftlvldiff', crafter.craftLvlDiffBuf, crafter.craftLvlDiffSize );
+				imgui.Text('Amount of mats:');
+				imgui.SameLine();
+				imgui.InputText('##nummats', crafter.numMatsBuf, crafter.numMatsSize);
 				imgui.Checkbox('Toggle Movement', crafter.movementToggle);
 				if (crafter.movementToggle[1]) then
 					imgui.Checkbox('Toggle Vendor Move Type', crafter.movetargetvendor);
@@ -728,8 +779,12 @@ end
 function doCraft ()
 	--Get current craft level
 	local selCraft = selectedCraft[1] + 1;
-	local tier, currentCraft = get_current_craft();
-	if tier ~= nil and currentCraft ~= nil then
+	--only get a new craft if we don't have mats
+	if (crafter.haveMats == false) then
+		crafter.currTier, crafter.currCraft = get_current_craft();
+		crafter.haveMats = true;
+	end
+	if crafter.currTier ~= nil and crafter.currCraft ~= nil then
 		--Check if we need to sell
 		local tempSlots = empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1])
 		--daoc.chat.msg(daoc.chat.message_mode.help, ('Empty slots %d'):fmt(tempSlots));
@@ -750,8 +805,8 @@ function doCraft ()
 					daoc.items.interact(target.object_id);
 				end
 			end
-			for x = 1, recipeList[selCraft][serverId][crafter.realm_id][tier]:len() do
-				sellByName(recipeList[selCraft][serverId][crafter.realm_id][tier][x].name);
+			for x = 1, recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier]:len() do
+				sellByName(recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][x].name);
 			end
 		elseif (crafter.movementToggle[1]) then
 			--check that we are at the craft spot
@@ -759,9 +814,11 @@ function doCraft ()
 				return;
 			end
 		end
-		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %d'):fmt(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].itemId));
-		local sendPkt = struct.pack('I4', recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].itemId):totable();
-		sendCraft(sendPkt);
+		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %d'):fmt(recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].itemId));
+		if crafter.isCrafting[1] then
+			local sendPkt = struct.pack('I4', recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].itemId):totable();
+			sendCraft(sendPkt);
+		end
 	else
 		daoc.chat.msg(daoc.chat.message_mode.help, ('Could not find item'));
 	end
@@ -819,7 +876,7 @@ function craftDistCheck()
 		return;
 	end
 	
-	if (crafter.movetargetcraft[1]) then
+	if (crafter.isCrafting[1] and crafter.movetargetcraft[1]) then
 		targetByName(crafter.craftTargNameBuf[1]);
 		--get target
 		local target = daoc.entity.get(daoc.entity.get_target_index());
@@ -838,7 +895,7 @@ function craftDistCheck()
 		else
 			return true;
 		end
-	else
+	elseif crafter.isCrafting[1] then
 		crafter.dest_x = crafter.craft_xLocBuf[1];
 		crafter.dest_y = crafter.craft_yLocBuf[1];
 		local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
@@ -855,7 +912,7 @@ end
 
 function checkMats()
 	--Make sure we are at vendor
-	if (crafter.movementToggle[1]) then
+	if (crafter.isCrafting[1] and crafter.movementToggle[1]) then
 		if (not sellDistCheck()) then
 			crafter.buyingMats = true;
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Too far from vendor to buy mats'));
@@ -867,6 +924,7 @@ function checkMats()
 			if target == nil then
 				return;
 			end
+			coroutine.sleep(0.5);
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Interact %s - %d'):fmt(target.name, target.object_id));
 			daoc.items.interact(target.object_id);
 		end
@@ -874,7 +932,7 @@ function checkMats()
 
 	local selCraft = selectedCraft[1] + 1;
 	--What materials do we need?
-	local tier, currentCraft = get_current_craft();
+	crafter.currTier, crafter.currCraft = get_current_craft();
 	--local mats = recipeList[selCraft][crafter.server_id[1]][crafter.realm_id][tier][currentCraft].mats;
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('mats needed %s'):fmt(mats:tostring()));
 	--For each item in mats table, buy 40x of the material
@@ -882,32 +940,42 @@ function checkMats()
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('%d, %d, %d, %d, %d'):fmt(selCraft, serverId, crafter.realm_id, tier, currentCraft));
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('name: %s'):fmt(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft]));
 	--Sell before we buy
-	sellBySlots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]);
-	for i=1, recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].mats:len() do
-		local currMat = recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft].mats[i];
-		daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(currMat.value, currMat.name));
-		local matCount = currMat.value*30;
-		while matCount > 100 do
-			if (buyMats(currMat.name, 100)) then
-				matCount = matCount - 100;
-			else
-				return;
-			end
+	if crafter.isCrafting[1] then
+		sellBySlots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]);
+		if crafter.currTier == nil or crafter.currCraft == nil then
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Tried to buy mats, but craft was nil'));
+			crafter.isCrafting[1] = false;
 		end
-		if matCount > 0 and matCount < 100 then
-			if not buyMats(currMat.name, matCount) then
-				return;
+		for i=1, recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].mats:len() do
+			local currMat = recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].mats[i];
+			daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(currMat.value, currMat.name));
+			local numMats = 30
+			if crafter.numMatsBuf[1]:len() > 0 then
+				numMats = tonumber(crafter.numMatsBuf[1]);
 			end
+			local matCount = currMat.value * numMats;
+			while matCount > 100 do
+				if (buyMats(currMat.name, 100)) then
+					matCount = matCount - 100;
+				else
+					return;
+				end
+			end
+			if matCount > 0 and matCount < 100 then
+				if not buyMats(currMat.name, matCount) then
+					return;
+				end
+			end
+			coroutine.sleep(1);
 		end
-		coroutine.sleep(1);
-	end
 
-	crafter.buyingMats = false;
-	if crafter.movementToggle[1] then
-		coroutine.sleep(math.random(5, 10));
-	end
+		crafter.buyingMats = false;
+		if crafter.movementToggle[1] then
+			coroutine.sleep(math.random(5, 10));
+		end
 
-	doCraft();
+		doCraft();
+	end
 
 end
 
@@ -925,75 +993,6 @@ function buyMats(matName, count)
 		daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(matName));
 		return false;
 	end
-	--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s'):fmt(type));
-	--local itemName = matName;
-	--local slotNum = nil;
-	--if tier > 10 then tier = 10; end;
-	--if type:ieq('leather') then
-	--	--itemName = leatherTiers[tier] .. ' leather square';
-	--	if (itemName:len() > 0) then
-	--		slotNum = daoc.items.get_merchant_slot(itemName);
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build leather itemname'));
-	--		return false;
-	--	end
-	--	if slotNum ~= nil then
-	--		--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
-	--		buyItem(slotNum, count)
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
-	--		return false;
-	--	end
-	--	return true;
-	--elseif type:ieq('thread') then
-	--	--itemName = clothTiers[tier] .. ' heavy thread';
-	--	if (itemName:len() > 0) then
-	--		slotNum = daoc.items.get_merchant_slot(itemName);
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build cloth itemname'));
-	--		return false;
-	--	end
-	--	if slotNum ~= nil then
-	--		--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
-	--		buyItem(slotNum, count)
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
-	--		return false;
-	--	end
-	--	return true;
-	--elseif type:ieq('metal') then
-	--	itemName = metalTiers[tier] .. ' metal bars';
-	--	if (itemName:len() > 0) then
-	--		slotNum = daoc.items.get_merchant_slot(itemName);
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build metal itemname'));
-	--		return false;
-	--	end
-	--	if slotNum ~= nil then
-	--		--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
-	--		buyItem(slotNum, count)
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
-	--		return false;
-	--	end
-	--	return true;
-	--elseif type:ieq('strip') then
-	--	itemName = stripTiers[tier] .. ' strips';
-	--	if (itemName:len() > 0) then
-	--		slotNum = daoc.items.get_merchant_slot(itemName);
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('Failed to build strip itemname'));
-	--		return false;
-	--	end
-	--	if slotNum ~= nil then
-	--		--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %d %s from slot %d'):fmt(count, itemName, slotNum));
-	--		buyItem(slotNum, count)
-	--	else
-	--		daoc.chat.msg(daoc.chat.message_mode.help, ('No %s in merchant list'):fmt(itemName));
-	--		return false;
-	--	end
-	--	return true;
-	--end
 	return false;
 end
 
