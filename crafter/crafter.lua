@@ -236,11 +236,15 @@ local default_settings = T{
 	movementToggle = T { true },
 	movetargetvendor = T { false },
 	movetargetcraft = T { false },
+	movetargettrain = T { false },
 	buyingMats = false;
+	isTraining = false;
     vendorTargNameBuf = { 'Alastar MacDonnell' },
     vendorTargNameSize = 20,
     craftTargNameBuf = { 'Alchemy Table' },
     craftTargNameSize = 20,
+	trainTargNameBuf = { 'Laisren' },
+	trainTargNameSize = 20,
 	vendor_xLocBuf = { '28053' },
     vendor_xLocSize = 10,
 	vendor_yLocBuf = { '51726' },
@@ -249,6 +253,10 @@ local default_settings = T{
     craft_xLocSize = 10,
     craft_yLocBuf = { '53136' },
     craft_yLocSize = 10,
+    train_xLocBuf = { '28355' },
+    train_xLocSize = 10,
+    train_yLocBuf = { '53136' },
+    train_yLocSize = 10,
 	haveMats = false,
 	currTier = 0,
 	currCraft = 0,
@@ -387,8 +395,9 @@ end);
 --]]
 hook.events.register('unload', 'unload_cb', function ()
 	--turn off
-	crafter.isCraft[1] = false;
+	crafter.isCrafting[1] = false;
 	crafter.simpleToggle[1] = false;
+	crafter.ismoving = false;
 	--save settings when unloading
 	settings.save();
 end);
@@ -401,8 +410,14 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
     -- OpCode: Message
     if (e.opcode == 0xAF) then
 		if (e.data_modified:contains('You have reached')) then
-			daoc.chat.msg(daoc.chat.message_mode.help, ('Reached max'));
 			crafter.isCrafting[1] = false;
+			-- if eden, go visit the trainer
+			if not crafter.simpleToggle[1] and crafter.server_id[1] == 1 then
+				daoc.chat.msg(daoc.chat.message_mode.help, ('Reached max'));
+				crafter.isTraining = true;
+				crafter.buyingMats = false;
+				visitTrainer();
+			end
 		end
         if (e.data_modified:contains('fail') or e.data_modified:contains('successfully')) then
 			if (crafter.isCrafting[1]) then
@@ -492,7 +507,7 @@ hook.events.register('d3d_present', 'd3d_present_move', function ()
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('Do Tick'));
 			if (crafter.dest_x == 0 or crafter.dest_y == 0) then return; end
 			local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
-			daoc.chat.msg(daoc.chat.message_mode.help, ('p: %d %d - t %d %d - d %d'):fmt(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y, dist) );
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('p: %d %d - t %d %d - d %d'):fmt(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y, dist) );
 			if (dist < crafter.stopDist) then
 				
 				crafter.ismoving = false;
@@ -502,6 +517,9 @@ hook.events.register('d3d_present', 'd3d_present_move', function ()
 				if (crafter.buyingMats) then
 					daoc.chat.msg(daoc.chat.message_mode.help, ('Buying Mats'));
 					checkMats();
+				elseif (crafter.isTraining) then
+					daoc.chat.msg(daoc.chat.message_mode.help, ('Training'));
+					visitTrainer();
 				else
 					daoc.chat.msg(daoc.chat.message_mode.help, ('Done running do craft'));
 					doCraft();
@@ -542,7 +560,13 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 					selectedCraft[1] = craft_pos[1];
 				end
 				if (imgui.Button('Start', { 55, 20 })) then
-					doCraft();
+					--check if inventory is empty
+					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 30) then
+						checkMats();
+					else
+						doCraft();
+					end
+					
 				end
 				imgui.SameLine();
                 if (imgui.Button('Save', { 55, 20 })) then
@@ -597,19 +621,43 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 					else
 						imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Moving craft loc with loc');
 					end
-						imgui.Text("Target:")
-						imgui.SameLine();
-						imgui.PushItemWidth(200);
-						imgui.InputText("##craftname", crafter.craftTargNameBuf, crafter.craftTargNameSize);
-						imgui.Text("X:")
-						imgui.SameLine();
-						imgui.PushItemWidth(100);
-						imgui.InputText("##craftx", crafter.craft_xLocBuf, crafter.craft_xLocSize);
-						imgui.SameLine();
-						imgui.Text("Y:")
-						imgui.SameLine();
-						imgui.PushItemWidth(100);
-						imgui.InputText("##crafty", crafter.craft_yLocBuf, crafter.craft_yLocSize);
+
+					imgui.Text("Target:")
+					imgui.SameLine();
+					imgui.PushItemWidth(200);
+					imgui.InputText("##craftname", crafter.craftTargNameBuf, crafter.craftTargNameSize);
+					imgui.Text("X:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##craftx", crafter.craft_xLocBuf, crafter.craft_xLocSize);
+					imgui.SameLine();
+					imgui.Text("Y:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##crafty", crafter.craft_yLocBuf, crafter.craft_yLocSize);
+
+					imgui.Checkbox('Toggle Trainer Move Type', crafter.movetargettrain);
+					imgui.SameLine();
+					if (crafter.movetargettrain[1]) then
+						imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Moving trainer with target');
+					else
+						imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Moving trainer with loc');
+					end
+					
+					imgui.Text("Target:")
+					imgui.SameLine();
+					imgui.PushItemWidth(200);
+					imgui.InputText("##trainname", crafter.trainTargNameBuf, crafter.trainTargNameSize);
+					imgui.Text("X:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##trainx", crafter.train_xLocBuf, crafter.train_xLocSize);
+					imgui.SameLine();
+					imgui.Text("Y:")
+					imgui.SameLine();
+					imgui.PushItemWidth(100);
+					imgui.InputText("##trainy", crafter.train_yLocBuf, crafter.train_yLocSize);
+						
 				else
 					imgui.Text("Merchant window must be open");
 				end
@@ -688,6 +736,13 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 					end
 				end
 
+				imgui.EndTabItem()
+			end
+			if (imgui.BeginTabItem("Debug")) then
+				imgui.Text(('buyingMats: %s'):fmt(crafter.buyingMats));
+				imgui.Text(('isTraining: %s'):fmt(crafter.isTraining));
+				imgui.Text(('isMoving: %s'):fmt(crafter.ismoving))
+				imgui.Text(('isCrafting: %s'):fmt(crafter.isCrafting[1]));
 				imgui.EndTabItem()
 			end
 			imgui.EndTabBar();
@@ -790,7 +845,7 @@ function doCraft ()
 		--daoc.chat.msg(daoc.chat.message_mode.help, ('Empty slots %d'):fmt(tempSlots));
 		--Try to sell all tier items just in case we had extras of others
 		local serverId = crafter.server_id[1] + 1;
-		if (tempSlots <= 2) then
+		if (tempSlots < 2) then
 			--Make sure we are at vendor
 			if (crafter.movementToggle[1]) then
 				if (not sellDistCheck()) then
@@ -808,7 +863,8 @@ function doCraft ()
 			for x = 1, recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier]:len() do
 				sellByName(recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][x].name);
 			end
-		elseif (crafter.movementToggle[1]) then
+		end
+		if (crafter.movementToggle[1]) then
 			--check that we are at the craft spot
 			if (not craftDistCheck()) then
 				return;
@@ -819,6 +875,7 @@ function doCraft ()
 			local sendPkt = struct.pack('I4', recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].itemId):totable();
 			sendCraft(sendPkt);
 		end
+
 	else
 		daoc.chat.msg(daoc.chat.message_mode.help, ('Could not find item'));
 	end
@@ -1025,6 +1082,69 @@ function buyItem(slot, count)
 	local sendpkt = struct.pack('>I4I4I2I2BBBB', player.loc_x, player.loc_y, 04, slot, count, 0, 0, 0):totable();
 	daoc.game.send_packet(0x78, sendpkt, 0);
 	return true;
+end
+
+function trainDistCheck() 
+	--get player entity
+	local playerEnt = daoc.entity.get(daoc.entity.get_player_index());
+	if playerEnt == nil then
+		return;
+	end
+	
+	if (crafter.movetargettrain[1]) then
+		targetByName(crafter.trainTargNameBuf[1]);
+		--get target
+		local target = daoc.entity.get(daoc.entity.get_target_index());
+		if target == nil then
+			return false;
+		end
+		
+		local dist = math.distance2d(playerEnt.x, playerEnt.y, target.x, target.y);
+		if (dist > crafter.stopDist) then
+			crafter.dest_x = target.loc_x;
+			crafter.dest_y = target.loc_y;
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/movetarget');
+			crafter.ismoving = true;
+			return false;
+		else
+			return true;
+		end
+	else 
+		crafter.dest_x = crafter.train_xLocBuf[1];
+		crafter.dest_y = crafter.train_yLocBuf[1];
+		local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
+		if (dist > crafter.stopDist) then
+			crafter.ismoving = true;
+			daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, ('/movexy %d %d'):fmt(crafter.dest_x, crafter.dest_y));
+			return false;
+		else
+			return true;
+		end
+	end
+end
+
+function visitTrainer()
+	daoc.chat.msg(daoc.chat.message_mode.help, ('Visit trainer'));
+	--Make sure we are at vendor
+	if (crafter.movementToggle[1]) then
+		if (not trainDistCheck()) then
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Too far from trainer to train'));
+			return;
+		else
+			targetByName(crafter.trainTargNameBuf[1])
+			--get target entity
+			local target = daoc.entity.get(daoc.entity.get_target_index());
+			if target == nil then
+				return;
+			end
+			coroutine.sleep(0.5);
+			daoc.chat.msg(daoc.chat.message_mode.help, ('Interact %s - %d'):fmt(target.name, target.object_id));
+			daoc.items.interact(target.object_id);
+			crafter.isTraining = false;
+			crafter.isCrafting[1] = true;
+			doCraft();
+		end
+	end
 end
 
 function targetByName(targName)

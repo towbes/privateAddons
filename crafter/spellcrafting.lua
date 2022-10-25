@@ -139,16 +139,17 @@ return T {
 			T{
 				T{level = 19, name = 'imperfect Earthen Essence Jewel', mats = T{T{ name = 'Pal gem', value = 1},T{ name = 'essence of life', value = 17},T{ name = 'treant blood', value = 5},},itemId = 45854},
 				T{level = 41, name = 'imperfect Earthen War Spell Stone', mats = T{T{ name = 'Pal gem', value = 1},T{ name = 'unseelie dust', value = 17},T{ name = 'treant blood', value = 5},},itemId = 46879},				
-				T{level = 65, name = 'Flawed Blood Essence Jewel', mats = T{T{ name = 'Ee gem', value = 1},T{ name = 'essence of life', value = 13},T{ name = 'giant blood', value = 4},},itemId = 0},
-				T{level = 84, name = 'Flawed Earthen Nature Spell Stone', mats = T{T{ name = 'Ee gem', value = 1},T{ name = 'fairy dust', value = 13},T{ name = 'treant blood', value = 4},},itemId = 0},
-				T{level = 99, name = 'Flawed Earthen Shielding Jewel', mats = T{T{ name = 'Ee gem', value = 1},T{ name = 'ground draconic scales', value = 16},T{ name = 'treant blood', value = 4},},itemId = 0},
+				T{level = 65, name = 'imperfect Blood Essence Jewel', mats = T{T{ name = 'Pal gem', value = 1},T{ name = 'essence of life', value = 17},T{ name = 'giant blood', value = 5},},itemId = 14624},
+				T{level = 84, name = 'imperfect Earthen Nature Spell Stone', mats = T{T{ name = 'Pal gem', value = 1},T{ name = 'fairy dust', value = 17},T{ name = 'treant blood', value = 5},},itemId = 59679},
+				T{level = 99, name = 'imperfect Earthen Shielding Jewel', mats = T{T{ name = 'Pal gem', value = 1},T{ name = 'ground draconic scales', value = 21},T{ name = 'treant blood', value = 5},},itemId = 63774},
 			},
 			--Tier 6
 			T{
-				T{level = 15, name = 'embossed brea gloves', mats = T{T{name = 'leather', value = 3}, T{ name = 'thread', value = 2}}, itemId = 48412},
-				T{level = 45, name = 'embossed brea boots', mats = T{T{name = 'leather', value = 3}, T{ name = 'thread', value = 2}}, itemId = 50972},
-				T{level = 65, name = 'embossed constaic boots', mats = T{T{name = 'leather', value = 5}, T{ name = 'thread', value = 2}}, itemId = 797},
-				T{level = 95, name = 'embossed cruaigh gloves', mats = T{T{name = 'leather', value = 10}, T{ name = 'thread', value = 4}}, itemId = 13597},
+				T{level = 19, name = 'polished Earthen Essence Jewel', mats = T{T{ name = 'Mon gem', value = 1},T{ name = 'essence of life', value = 21},T{ name = 'treant blood', value = 6},},itemId = 46110},
+				T{level = 41, name = 'polished Earthen War Spell Stone', mats = T{T{ name = 'Mon gem', value = 1},T{ name = 'unseelie dust', value = 21},T{ name = 'treant blood', value = 6},},itemId = 47135},
+				T{level = 65, name = 'polished Blood Essence Jewel', mats = T{T{ name = 'Mon gem', value = 1},T{ name = 'essence of life', value = 21},T{ name = 'giant blood', value = 6},},itemId = 14880},
+				T{level = 84, name = 'polished Earthen Nature Spell Stone', mats = T{T{ name = 'Mon gem', value = 1},T{ name = 'fairy dust', value = 21},T{ name = 'treant blood', value = 6},},itemId = 59935},
+				T{level = 99, name = 'polished Earthen Shielding Jewel', mats = T{T{ name = 'Mon gem', value = 1},T{ name = 'ground draconic scales', value = 26},T{ name = 'treant blood', value = 6},},itemId = 64030},
 			},
 			--Tier 7
 			T{

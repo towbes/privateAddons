@@ -132,6 +132,18 @@ hook.events.register('command', 'command_cb', function (e)
         return;
     end
 
+        -- Command: /inv
+        if ((args[1]:ieq('movestop') and e.imode == daoc.chat.input_mode.slash) or args[1]:ieq('/movestop')) then
+            -- Mark the command as handled, preventing the game from ever seeing it..
+            e.blocked = true;
+            settings.movepos = false;
+    
+            settings.movetarg =  false;
+    
+    
+            return;
+        end
+
 end);
 
 --[[
