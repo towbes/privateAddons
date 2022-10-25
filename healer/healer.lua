@@ -254,11 +254,14 @@ local default_settings = T{
     heal1nameSize = 50,
     heal2nameBuf = { '' },
     heal2nameSize = 50,
+    heal3nameBuf = { '' },
+    heal3nameSize = 50,
     grpHealnameBuf = { '' },
     grpHealnameSize = 50,
     petHealNameBuf = { '' },
     petHealSize = 50,
     pet_toggle = T{ false, },
+    healRange = 2000,
 };
 
 local healer = settings.load(default_settings);
@@ -319,24 +322,29 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
         tick_holder = hook.time.tick();
         
         if (healer.is_checked[1]) then
-            for x = 0, 7 do
-                local member = party[x];
-                --daoc.chat.msg(daoc.chat.message_mode.help, ('member %s'):fmt(member.name));    
-                if member.name:len() > 0 then
-                    if (member.health < 65) then
-                        targetByName(member.name);
-                        local idx = daoc.data.get_skill(healer.heal2nameBuf[1])
-                        --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
-                        if (player.unknown43[0] == 0) then
-                            daoc.game.use_skill(idx, 1);
-                        end
-                    elseif (member.health < 90) then
-                        targetByName(member.name);
-                        local idx = daoc.data.get_skill(healer.heal1nameBuf[1])
-                        --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));    
-                        if (player.unknown43[0] == 0) then
-                            daoc.game.use_skill(idx, 1);
-                        end
+            local pidx, php = lowest_party_hp();
+            local member = party[pidx];
+            if (member.name:len() > 0 and php > 0) then
+                if (member.health < 40) then
+                    targetByName(member.name);
+                    local idx = daoc.data.get_skill(healer.heal3nameBuf[1])
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
+                    if (player.unknown43[0] == 0) then
+                        daoc.game.use_skill(idx, 1);
+                    end
+                elseif (member.health < 65) then
+                    targetByName(member.name);
+                    local idx = daoc.data.get_skill(healer.heal2nameBuf[1])
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
+                    if (player.unknown43[0] == 0) then
+                        daoc.game.use_skill(idx, 1);
+                    end
+                elseif (member.health < 90) then
+                    targetByName(member.name);
+                    local idx = daoc.data.get_skill(healer.heal1nameBuf[1])
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));    
+                    if (player.unknown43[0] == 0) then
+                        daoc.game.use_skill(idx, 1);
                     end
                 end
             end
@@ -347,12 +355,19 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
                     if petent == nil then
                         return;
                     end
-                    if (petent.health < 65) then
+                    if (petent.health < 40) then
+                        targetByName(petent.name);
+                        local idx = daoc.data.get_skill(healer.heal3nameBuf[1])
+                        --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
+                        if (player.unknown43[0] == 0) then
+                            daoc.game.use_skill(idx, 1);
+                        end
+                    elseif (petent.health < 65) then
                         targetByName(petent.name);
                         local idx = daoc.data.get_skill(healer.heal2nameBuf[1])
                         --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
                         if (player.unknown43[0] == 0) then
-                            petent.game.use_skill(idx, 1);
+                            daoc.game.use_skill(idx, 1);
                         end
                     elseif (petent.health < 90) then
                         targetByName(petent.name);
@@ -397,6 +412,10 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
         imgui.SameLine();
         imgui.PushItemWidth(200);
         imgui.InputText("##heal2name", healer.heal2nameBuf, healer.heal2nameSize);
+        imgui.Text("Emerg Heal:")
+        imgui.SameLine();
+        imgui.PushItemWidth(200);
+        imgui.InputText("##heal3name", healer.heal3nameBuf, healer.heal3nameSize);
         if healer.pet_toggle[1] then
             imgui.Text("Pet name:")
             imgui.SameLine();
@@ -436,7 +455,7 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
     
         for x = 0, 7 do
             local member = party[x];
-            imgui.Text(('Group %d: %s - %d'):fmt(x, member.name, member.health))
+            imgui.Text(('Group %d: %s - %d - %d %d'):fmt(x, member.name, member.health, member.x, member.y))
         end 
 
         local player = daoc.entity.get(daoc.entity.get_player_index());
@@ -474,4 +493,33 @@ function entityByName(entName)
 		end
 	end
     return nil;
+end
+
+function lowest_party_hp()
+    local lowhp = 100;
+    local curIdx = 0;
+
+    local player = daoc.entity.get(daoc.entity.get_player_index());
+    if player == nil then
+        error('Failed to get player entity.');
+		return;
+    end
+
+
+    local party = daoc.party.get_members();
+    if party == nil then
+        return curIdx, lowhp;
+    end
+    for x = 0, 7 do
+        local member = party[x];
+        --daoc.chat.msg(daoc.chat.message_mode.help, ('member %s'):fmt(member.name));    
+        if member.name:len() > 0 then
+            local dist = math.distance2d(player.loc_x, player.loc_y, member.x, member.y);
+            if (dist < healer.healRange and member.health > 0 and member.health < lowhp) then
+                curIdx = x;
+                lowhp = member.health;
+            end
+        end
+    end
+    return curIdx, lowhp;
 end
