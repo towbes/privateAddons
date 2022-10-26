@@ -429,7 +429,7 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
 				end
 			end
 		end
-		if (e.data_modified:contains('missing')) then
+		if (crafter.isCrafting[1] and e.data_modified:contains('missing')) then
 			if not crafter.simpleToggle[1] and crafter.isCrafting[1] then
 				crafter.haveMats = false;
 				checkMats();
@@ -561,7 +561,7 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				end
 				if (imgui.Button('Start', { 55, 20 })) then
 					--check if inventory is empty
-					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 30) then
+					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 38) then
 						checkMats();
 					else
 						doCraft();
@@ -984,6 +984,7 @@ function checkMats()
 			coroutine.sleep(0.5);
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Interact %s - %d'):fmt(target.name, target.object_id));
 			daoc.items.interact(target.object_id);
+			coroutine.sleep(0.5);
 		end
 	end
 

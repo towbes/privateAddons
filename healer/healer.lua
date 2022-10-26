@@ -250,12 +250,34 @@ end);
 -- healer Variables
 local default_settings = T{
     is_checked = T{ false, },
-    heal1nameBuf = { '' },
+    heal1nameBuf = { '' }, --small heal
     heal1nameSize = 50,
-    heal2nameBuf = { '' },
+    heal1valBuf = { '' },
+    heal1valSize = 5,
+    heal2nameBuf = { '' }, -- big heal
     heal2nameSize = 50,
-    heal3nameBuf = { '' },
+    heal2valBuf = { '' },
+    heal2valSize = 5,
+    heal3nameBuf = { '' }, --emergency heal
     heal3nameSize = 50,
+    heal3valBuf = { '' },
+    heal3valSize = 5,
+    heal4nameBuf = { '' }, -- small group heal
+    heal4nameSize = 50,
+    heal4valBuf = { '' },
+    heal4valSize = 5,
+    heal5nameBuf = { '' }, -- big grp heal
+    heal5nameSize = 50,
+    heal5valBuf = { '' },
+    heal5valSize = 5,
+    heal6nameBuf = { '' },-- single insta
+    heal6nameSize = 50,
+    heal6valBuf = { '' },
+    heal6valSize = 5,
+    heal7nameBuf = { '' }, -- grp insta
+    heal7nameSize = 50,
+    heal7valBuf = { '' },
+    heal7valSize = 5,
     grpHealnameBuf = { '' },
     grpHealnameSize = 50,
     petHealNameBuf = { '' },
@@ -324,26 +346,52 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
         if (healer.is_checked[1]) then
             local pidx, php = lowest_party_hp();
             local member = party[pidx];
-            if (member.name:len() > 0 and php > 0) then
-                if (member.health < 40) then
-                    targetByName(member.name);
+            local pavghp = party_avg_hp();
+            if (pavghp < tonumber(healer.heal7valBuf[1])) then
+                local idx = daoc.data.get_skill(healer.heal7nameBuf[1])
+                if (idx ~= nil) then
+                    daoc.game.use_skill(idx, 1);
+                end                
+            elseif (pavghp < tonumber(healer.heal5valBuf[1])) then
+                --cast regular group heal
+                local idx = daoc.data.get_skill(healer.heal5nameBuf[1])
+                if (idx ~= nil and player.unknown43[0] == 0) then
+                    daoc.game.use_skill(idx, 1);
+                end
+            elseif (pavghp < tonumber(healer.heal4valBuf[1])) then
+                --cast spreadheal
+                local idx = daoc.data.get_skill(healer.heal4nameBuf[1])
+                if (idx ~= nil and player.unknown43[0] == 0) then
+                    daoc.game.use_skill(idx, 1);
+                end
+            end
+            if (member.name:len() > 0 and php > 0 and php < 100) then
+                if (member.health < tonumber(healer.heal6valBuf[1])) then
+                    daoc.entity.set_target(daoc.entity.get_index_by_id(daoc.party.get_member_object_id(pidx)))
+                    local idx = daoc.data.get_skill(healer.heal6nameBuf[1])
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
+                    if (idx ~= nil) then
+                        daoc.game.use_skill(idx, 1);
+                    end
+                elseif (member.health < tonumber(healer.heal3valBuf[1])) then
+                    daoc.entity.set_target(daoc.entity.get_index_by_id(daoc.party.get_member_object_id(pidx)))
                     local idx = daoc.data.get_skill(healer.heal3nameBuf[1])
                     --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
-                    if (player.unknown43[0] == 0) then
+                    if (idx ~= nil and player.unknown43[0] == 0) then
                         daoc.game.use_skill(idx, 1);
                     end
-                elseif (member.health < 65) then
-                    targetByName(member.name);
+                elseif (member.health < tonumber(healer.heal2valBuf[1])) then
+                    daoc.entity.set_target(daoc.entity.get_index_by_id(daoc.party.get_member_object_id(pidx)))
                     local idx = daoc.data.get_skill(healer.heal2nameBuf[1])
                     --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
-                    if (player.unknown43[0] == 0) then
+                    if (idx ~= nil and player.unknown43[0] == 0) then
                         daoc.game.use_skill(idx, 1);
                     end
-                elseif (member.health < 90) then
-                    targetByName(member.name);
+                elseif (member.health < tonumber(healer.heal1valBuf[1])) then
+                    daoc.entity.set_target(daoc.entity.get_index_by_id(daoc.party.get_member_object_id(pidx)))
                     local idx = daoc.data.get_skill(healer.heal1nameBuf[1])
                     --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));    
-                    if (player.unknown43[0] == 0) then
+                    if (idx ~= nil and player.unknown43[0] == 0) then
                         daoc.game.use_skill(idx, 1);
                     end
                 end
@@ -355,25 +403,26 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
                     if petent == nil then
                         return;
                     end
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('%s idx %d'):fmt(petent.name, petent.object_id));
                     if (petent.health < 40) then
-                        targetByName(petent.name);
+                        daoc.entity.set_target(daoc.entity.get_index_by_id(petent.object_id))
                         local idx = daoc.data.get_skill(healer.heal3nameBuf[1])
                         --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
-                        if (player.unknown43[0] == 0) then
+                        if (idx ~= nil and player.unknown43[0] == 0) then
                             daoc.game.use_skill(idx, 1);
                         end
                     elseif (petent.health < 65) then
-                        targetByName(petent.name);
+                        daoc.entity.set_target(daoc.entity.get_index_by_id(petent.object_id))
                         local idx = daoc.data.get_skill(healer.heal2nameBuf[1])
                         --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));
-                        if (player.unknown43[0] == 0) then
+                        if (idx ~= nil and player.unknown43[0] == 0) then
                             daoc.game.use_skill(idx, 1);
                         end
                     elseif (petent.health < 90) then
-                        targetByName(petent.name);
+                        daoc.entity.set_target(daoc.entity.get_index_by_id(petent.object_id))
                         local idx = daoc.data.get_skill(healer.heal1nameBuf[1])
                         --daoc.chat.msg(daoc.chat.message_mode.help, ('heal %s with %d'):fmt(member.name, idx));    
-                        if (player.unknown43[0] == 0) then
+                        if (idx ~= nil and player.unknown43[0] == 0) then
                             daoc.game.use_skill(idx, 1);
                         end
                     end
@@ -397,29 +446,73 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
         imgui.SameLine();
         imgui.Checkbox('Pet Heal Toggle', healer.pet_toggle);
 
-
+        local pavghp = party_avg_hp();
         
         if (healer.is_checked[1]) then
-            imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, 'Running!');
+            imgui.TextColored(T{ 0.0, 1.0, 0.0, 1.0, }, ('Running! Party HP: %.0f'):fmt(pavghp));
         else
             imgui.TextColored(T{ 1.0, 0.0, 0.0, 1.0, }, 'Off');
         end
-        imgui.Text("Small Heal:")
-        imgui.SameLine();
-        imgui.PushItemWidth(200);
-        imgui.InputText("##heal1name", healer.heal1nameBuf, healer.heal1nameSize);
-        imgui.Text("Big Heal:")
-        imgui.SameLine();
-        imgui.PushItemWidth(200);
-        imgui.InputText("##heal2name", healer.heal2nameBuf, healer.heal2nameSize);
-        imgui.Text("Emerg Heal:")
-        imgui.SameLine();
-        imgui.PushItemWidth(200);
-        imgui.InputText("##heal3name", healer.heal3nameBuf, healer.heal3nameSize);
+        if (imgui.BeginTable('##find_items_list2', 3, bit.bor(ImGuiTableFlags_RowBg, ImGuiTableFlags_BordersH, ImGuiTableFlags_BordersV, ImGuiTableFlags_ContextMenuInBody, ImGuiTableFlags_ScrollX, ImGuiTableFlags_ScrollY, ImGuiTableFlags_SizingFixedFit))) then
+            imgui.TableSetupColumn('Type', ImGuiTableColumnFlags_WidthFixed, 120.0, 0);
+            imgui.TableSetupColumn('Name', ImGuiTableColumnFlags_WidthFixed, 200.0, 0);
+            imgui.TableSetupColumn('Threshold', ImGuiTableColumnFlags_WidthStretch, 0, 0);
+            imgui.TableHeadersRow();
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Small Heal")
+            imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal1name", healer.heal1nameBuf, healer.heal1nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal1val", healer.heal1valBuf, healer.heal1valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Big Heal")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal2name", healer.heal2nameBuf, healer.heal2nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal2val", healer.heal2valBuf, healer.heal2valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Emerg Heal")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal3name", healer.heal3nameBuf, healer.heal3nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal3val", healer.heal3valBuf, healer.heal3valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Small Grp Heal")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal4name", healer.heal4nameBuf, healer.heal4nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal4val", healer.heal4valBuf, healer.heal4valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Big Grp Heal")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal5name", healer.heal5nameBuf, healer.heal5nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal5val", healer.heal5valBuf, healer.heal5valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Single Insta")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal6name", healer.heal6nameBuf, healer.heal6nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal6val", healer.heal6valBuf, healer.heal6valSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.Text("Grp Insta")
+            imgui.TableNextColumn();
+            imgui.InputText("##heal7name", healer.heal7nameBuf, healer.heal7nameSize);
+            imgui.TableNextColumn();
+            imgui.InputText("##heal7val", healer.heal7valBuf, healer.heal7valSize);
+            imgui.EndTable();
+        end
         if healer.pet_toggle[1] then
             imgui.Text("Pet name:")
             imgui.SameLine();
-            imgui.PushItemWidth(200);
             imgui.InputText("##petname", healer.petHealNameBuf, healer.petHealSize);
         end
         if (imgui.Button('Spell')) then
@@ -472,11 +565,12 @@ function targetByName(targName)
 	for i = 1, daoc.entity.get_count() do
 		if (daoc.entity.is_valid(i)) then
 			local ent = daoc.entity.get(i);
-			if (ent ~= nil and i ~= daoc.entity.get_player_index()) then
+			if (ent ~= nil and ent.object_id > 0) then
+                --daoc.chat.msg(daoc.chat.message_mode.help, ('idx %d, id %d'):fmt(i, ent.object_id));    
 				if (ent.name:lower():ieq(targName)) then
 					daoc.entity.set_target(i, 1);
 				end
-			end
+            end
 		end
 	end
 end
@@ -485,7 +579,8 @@ function entityByName(entName)
 	for i = 1, daoc.entity.get_count() do
 		if (daoc.entity.is_valid(i)) then
 			local ent = daoc.entity.get(i);
-			if (ent ~= nil and i ~= daoc.entity.get_player_index()) then
+			if (ent ~= nil and ent.object_id > 0) then
+                --daoc.chat.msg(daoc.chat.message_mode.help, ('idx %d, id %d'):fmt(i, ent.object_id));    
 				if (ent.name:lower():ieq(entName)) then
 					return daoc.entity.get(i);
 				end
@@ -518,8 +613,39 @@ function lowest_party_hp()
             if (dist < healer.healRange and member.health > 0 and member.health < lowhp) then
                 curIdx = x;
                 lowhp = member.health;
+                
             end
         end
     end
     return curIdx, lowhp;
+end
+
+function party_avg_hp()
+    local totalhp = 0;
+    local count = 0;
+    local player = daoc.entity.get(daoc.entity.get_player_index());
+    if player == nil then
+        error('Failed to get player entity.');
+		return 100;
+    end
+
+    local party = daoc.party.get_members();
+    if party == nil then
+        return 100;
+    end
+    for x = 0, 7 do
+        local member = party[x];
+        --daoc.chat.msg(daoc.chat.message_mode.help, ('member %s'):fmt(member.name));    
+        if member.name:len() > 0 then
+            local dist = math.distance2d(player.loc_x, player.loc_y, member.x, member.y);
+            if (dist < healer.healRange and member.health > 0) then
+                totalhp = totalhp + member.health;
+                count = count + 1;
+                
+            end
+        end
+    end
+    if count == 0 then count = 1; end
+    local partyavg = totalhp / count;
+    return partyavg;
 end
