@@ -12,15 +12,13 @@ require 'daoc';
 local imgui = require 'imgui';
 local ffi = require 'ffi';
 local settings  = require 'settings';
-
---Tailoring receipes
-local tailorRecipe = require('tailoring');
-local armorRecipe = require('armorcrafting');
-local fletchRecipe = require('fletching');
-local spellRecipe = require('spellcrafting');
+local json = require('json');
 
 
 local recipeList = T { };
+
+--Master Recipe list
+local masterRecipe = T { };
 
 --[[
 * Inventory Related Function Definitions
@@ -162,7 +160,7 @@ daoc.items.get_craft_level = function (craftName)
 	for i=0, 15 do
 		local craft = daoc.items.get_craft(i);
 		if (craft ~= nil) then
-			if (craft.name:ieq(craftName)) then
+			if (craft.name:contains(craftName)) then
 				return craft.level_mod * 0x100 + craft.level;
 			end
 		end
@@ -227,7 +225,7 @@ local default_settings = T{
 	numMatsSize = 10,
     sortDelay = 0.25,
 	currentTier = 0,
-    realm_id = 0,
+    realm_id = T{0},
 	server_id = T{1}, -- 0 = live, 1 = eden
 	ismoving = false,
 	dest_x = 0,
@@ -260,6 +258,7 @@ local default_settings = T{
 	haveMats = false,
 	currTier = 0,
 	currCraft = 0,
+	selectedCraft = T { 11 };
 };
 
 local crafter = settings.load(default_settings);
@@ -269,7 +268,7 @@ local tick_holder = hook.time.tick();
 local tick_interval = 5000;
 
 --combo box for current craft
-local selectedCraft = T { 11 };
+--local crafter.selectedCraft = T { 11 };
 local craftStrings = T {
 	'Weaponcraft',
 	'Armorcraft',
@@ -282,7 +281,7 @@ local craftStrings = T {
 	'Herbcraft',
 	'Tailoring',
 	'Fletching',
-	'Spellcrafting',
+	'Spellcraft',
 	'Woodworking',
 	'Bountycrafting',
 	'Basic Crafting',
@@ -365,24 +364,7 @@ hook.events.register('load', 'load_cb', function ()
 		return;
     end
 
-	crafter.realm_id = player.realm_id;
-
-	--Append to the recipe list - index correlates to combobox, selectedCraft[1] + 1
-	recipeList:append(T{'Weaponcraft'})
-	recipeList:append(armorRecipe);
-	recipeList:append(T{'Siegecraft'})
-	recipeList:append(T{'Alchemy'})
-	recipeList:append(T{'Metalworking'})
-	recipeList:append(T{'Leatherworking'})
-	recipeList:append(T{'Clothworking'})
-	recipeList:append(T{'Gemcutting'})
-	recipeList:append(T{'Herbcraft'})
-	recipeList:append(tailorRecipe);
-	recipeList:append(fletchRecipe);
-	recipeList:append(spellRecipe)
-	recipeList:append(T{'Woodworking'})
-	recipeList:append(T{'Bountycrafting'})
-	recipeList:append(T{'Basic Crafting'})
+	crafter.realm_id[1] = player.realm_id;
 
 	--load movement addon
 	daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/addon load hashiru');
@@ -422,7 +404,7 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
         if (e.data_modified:contains('fail') or e.data_modified:contains('successfully')) then
 			if (crafter.isCrafting[1]) then
 				if (crafter.simpleToggle[1]) then
-					local sendPkt = struct.pack('I4',saveItemId):totable();
+					local sendPkt = struct.pack('>H',saveItemId):totable();
 					sendCraft(sendPkt);
 				else
 					doCraft();	
@@ -450,12 +432,9 @@ hook.events.register('packet_send', 'packet_send_cb', function (e)
 		--[itemId]
         -- Cast the raw packet pointer to a byte array via FFI..
         local packet = ffi.cast('uint8_t*', e.data_modified_raw);
-		savePacket[1] = packet[0];
-		savePacket[2] = packet[1];
-		savePacket[3] = packet[2];
-		savePacket[4] = packet[3];
 		--numstr = e.data:join();
-		saveItemId = struct.unpack('I4', e.data);
+		--Get short in big endian mode to match crf file
+		saveItemId = struct.unpack('>H', e.data);
 		if (crafter.logItemId[1]) then
 			daoc.chat.msg(daoc.chat.message_mode.help, ('itemId: %d'):fmt(saveItemId));
 		end
@@ -555,11 +534,17 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				if (imgui.Combo('##selServer', server_pos, 'Live\0Eden\0\0')) then
 					crafter.server_id[1] = server_pos[1];
 				end
-				local craft_pos = { selectedCraft[1] };
+				local realm_pos = { crafter.realm_id[1] };
+				if (imgui.Combo('##selRealm', realm_pos, 'Albion\0Midgard\0Hibernia\0\0')) then
+					crafter.realm_id[1] = realm_pos[1];
+				end
+				local craft_pos = { crafter.selectedCraft[1] };
 				if (imgui.Combo('##selCraft', craft_pos, 'Weaponcraft\0Armorcraft\0Siegecraft\0Alchemy\0Metalworking\0Leatherworking\0Clothworking\0Gemcutting\0Herbcraft\0Tailoring\0Fletching\0Spellcrafting\0Woodworking\0Bountycrafting\0Basic Crafting\0\0')) then
-					selectedCraft[1] = craft_pos[1];
+					crafter.selectedCraft[1] = craft_pos[1];
 				end
 				if (imgui.Button('Start', { 55, 20 })) then
+					load_recipes();
+					load_paths();
 					--check if inventory is empty
 					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 38) then
 						checkMats();
@@ -789,8 +774,12 @@ end
 --]]
 function get_current_craft()
 	--Get current craft level
-	local selCraft = selectedCraft[1] + 1;
+	local selCraft = crafter.selectedCraft[1] + 1;
 	local clvl = daoc.items.get_craft_level(craftStrings[selCraft])
+	if clvl == nil then
+		daoc.chat.msg(daoc.chat.message_mode.help, ('%s level not found'):fmt(craftStrings[selCraft]));
+		return;
+	end
 	--figure out which recipe we should be making, next one is oj when receipe level - current level < 15
 	local itemId = 0;
 	local tier = 1;
@@ -811,10 +800,11 @@ function get_current_craft()
 	clvl = clvl:mod(100);
 	local currentCraft = 0;
 	local serverId = crafter.server_id[1] + 1;
-	--daoc.chat.msg(daoc.chat.message_mode.help, ('craft %d, clvl: %d, server: %d, realm: %d, tier %d'):fmt(selCraft, clvl, serverId, crafter.realm_id, tier))
-	--daoc.chat.msg(daoc.chat.message_mode.help, ('table: %s'):fmt(recipeList[selCraft][crafter.server_id][crafter.server_id][crafter.realm_id][tier][1]:join()))
-	for x = 1, recipeList[selCraft][serverId][crafter.realm_id][tier]:len() do
-		local recipe = recipeList[selCraft][serverId][crafter.realm_id][tier][x];
+	local realmId = crafter.realm_id[1] + 1;
+	daoc.chat.msg(daoc.chat.message_mode.help, ('craft %d, clvl: %d, server: %d, realm: %d, tier %d'):fmt(selCraft, clvl, serverId, realmId, tier))
+	--daoc.chat.msg(daoc.chat.message_mode.help, ('table: %s'):fmt(recipeList[selCraft][crafter.server_id][crafter.server_id][crafter.realm_id[1]][tier][1]:join()))
+	for x = 1, recipeList[selCraft][serverId][realmId][tier]:len() do
+		local recipe = recipeList[selCraft][serverId][realmId][tier][x];
 		--daoc.chat.msg(daoc.chat.message_mode.help, ('Item %s - %d - Clvl %d'):fmt(recipe.name, recipe.level, clvl))
 		local craftLvlDiff = tonumber(crafter.craftLvlDiffBuf[1])
 		if craftLvlDiff == 0 then craftLvlDiff = 20; end
@@ -826,14 +816,14 @@ function get_current_craft()
 	if itemId > 0 and currentCraft > 0 then
 		return tier, currentCraft;
 	else
-		daoc.chat.msg(daoc.chat.message_mode.help, ('ItemId not found. Clvl %d, realm %d, tier %d'):fmt(clvl, crafter.realm_id, tier));
+		daoc.chat.msg(daoc.chat.message_mode.help, ('ItemId not found. Clvl %d, realm %d, tier %d'):fmt(clvl, realmId, tier));
 		return nil, nil;
 	end
 end
 
 function doCraft ()
 	--Get current craft level
-	local selCraft = selectedCraft[1] + 1;
+	local selCraft = crafter.selectedCraft[1] + 1;
 	--only get a new craft if we don't have mats
 	if (crafter.haveMats == false) then
 		crafter.currTier, crafter.currCraft = get_current_craft();
@@ -845,6 +835,7 @@ function doCraft ()
 		--daoc.chat.msg(daoc.chat.message_mode.help, ('Empty slots %d'):fmt(tempSlots));
 		--Try to sell all tier items just in case we had extras of others
 		local serverId = crafter.server_id[1] + 1;
+		local realmId = crafter.realm_id[1] + 1;
 		if (tempSlots < 2) then
 			--Make sure we are at vendor
 			if (crafter.movementToggle[1]) then
@@ -860,8 +851,8 @@ function doCraft ()
 					daoc.items.interact(target.object_id);
 				end
 			end
-			for x = 1, recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier]:len() do
-				sellByName(recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][x].name);
+			for x = 1, recipeList[selCraft][serverId][realmId][crafter.currTier]:len() do
+				sellByName(recipeList[selCraft][serverId][realmId][crafter.currTier][x].name);
 			end
 		end
 		if (crafter.movementToggle[1]) then
@@ -870,9 +861,16 @@ function doCraft ()
 				return;
 			end
 		end
-		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %d'):fmt(recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].itemId));
+		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %d'):fmt(recipeList[selCraft][serverId][crafter.realm_id[1]][crafter.currTier][crafter.currCraft].itemId));
 		if crafter.isCrafting[1] then
-			local sendPkt = struct.pack('I4', recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].itemId):totable();
+			--get the craft name
+			local craftname = recipeList[selCraft][serverId][realmId][crafter.currTier][crafter.currCraft].name;
+			--Get base material in first index, rest of name in second index
+			local basemat = craftname:psplit(' ', 1, false);
+			local category = craftname:replace(basemat[1]..' ', '', 1);
+			--get the id
+			local craftId = get_craftid(craftStrings[selCraft], basemat[1], category);
+			local sendPkt = struct.pack('>H', craftId):totable();
 			sendCraft(sendPkt);
 		end
 
@@ -988,15 +986,17 @@ function checkMats()
 		end
 	end
 
-	local selCraft = selectedCraft[1] + 1;
+
 	--What materials do we need?
 	crafter.currTier, crafter.currCraft = get_current_craft();
-	--local mats = recipeList[selCraft][crafter.server_id[1]][crafter.realm_id][tier][currentCraft].mats;
+	--local mats = recipeList[selCraft][crafter.server_id[1]][crafter.realm_id[1]][tier][currentCraft].mats;
 	--daoc.chat.msg(daoc.chat.message_mode.help, ('mats needed %s'):fmt(mats:tostring()));
 	--For each item in mats table, buy 40x of the material
 	local serverId = crafter.server_id[1] + 1;
-	--daoc.chat.msg(daoc.chat.message_mode.help, ('%d, %d, %d, %d, %d'):fmt(selCraft, serverId, crafter.realm_id, tier, currentCraft));
-	--daoc.chat.msg(daoc.chat.message_mode.help, ('name: %s'):fmt(recipeList[selCraft][serverId][crafter.realm_id][tier][currentCraft]));
+	local realmId = crafter.realm_id[1] + 1;
+	local selCraft = crafter.selectedCraft[1] + 1;
+	daoc.chat.msg(daoc.chat.message_mode.help, ('%d, %d, %d, %d, %d'):fmt(selCraft, serverId, realmId, crafter.currTier, crafter.currCraft));
+	--daoc.chat.msg(daoc.chat.message_mode.help, ('name: %s'):fmt(recipeList[selCraft][serverId][realmId][tier][currentCraft]));
 	--Sell before we buy
 	if crafter.isCrafting[1] then
 		sellBySlots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]);
@@ -1004,23 +1004,39 @@ function checkMats()
 			daoc.chat.msg(daoc.chat.message_mode.help, ('Tried to buy mats, but craft was nil'));
 			crafter.isCrafting[1] = false;
 		end
-		for i=1, recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].mats:len() do
-			local currMat = recipeList[selCraft][serverId][crafter.realm_id][crafter.currTier][crafter.currCraft].mats[i];
-			daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(currMat.value, currMat.name));
+		--get the craft name
+		local craftname = recipeList[selCraft][serverId][realmId][crafter.currTier][crafter.currCraft].name;
+        --Get base material in first index, rest of name in second index
+        local basemat = craftname:psplit(' ', 1, false);
+        local category = craftname:replace(basemat[1]..' ', '', 1);
+        --lookup the materials
+		local matList = get_materials(craftStrings[selCraft], basemat[1], category);
+
+		for i=1, matList:len() do
+			local matname = matList[i].base_material_name .. ' ' .. matList[i].name;
+			--if the matname ends in an s, remove it
+			if matname:endswith('s') then
+				daoc.chat.msg(daoc.chat.message_mode.help, ('remove s'));
+				matname = matname:sub(1, -2);
+			end
+			--trim whitespace
+			matname = matname:clean();
+			local matval = matList[i].count;
+			daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(matval, matname));
 			local numMats = 30
 			if crafter.numMatsBuf[1]:len() > 0 then
 				numMats = tonumber(crafter.numMatsBuf[1]);
 			end
-			local matCount = currMat.value * numMats;
-			while matCount > 100 do
-				if (buyMats(currMat.name, 100)) then
+			local matCount = matval * numMats;
+			while matCount >= 100 do
+				if (buyMats(matname, 100)) then
 					matCount = matCount - 100;
 				else
 					return;
 				end
 			end
 			if matCount > 0 and matCount < 100 then
-				if not buyMats(currMat.name, matCount) then
+				if not buyMats(matname, matCount) then
 					return;
 				end
 			end
@@ -1159,4 +1175,104 @@ function targetByName(targName)
 			end
 		end
 	end
+end
+
+function get_craftid(craftName, baseMat, category)
+    local craftid = 0;
+
+    masterRecipe:each(function (v, k)
+        --daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
+        v:each(function (_, kk)
+            if (_['profession'] == craftName) then
+                if (_['base_material_name']:ieq(baseMat) and _['category']:ieq(category)) then
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(v['category']));
+                    craftid = _['id'];
+                end
+            end
+        end);
+    end);
+
+    return craftid;
+end
+
+function get_materials(craftName, baseMat, category)
+    local matTable;
+
+	daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s %s'):fmt(craftName, baseMat, category));
+    masterRecipe:each(function (v, k)
+        --daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
+        v:each(function (_, kk)
+            if (_['profession'] == craftName) then
+                if (_['base_material_name']:ieq(baseMat) and _['category']:ieq(category)) then
+                    --daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(v['category']));
+                    matTable = _['materials'];
+                end
+            end
+        end);
+    end);
+
+    return matTable;
+end
+
+function load_recipes()
+	local serverId = crafter.server_id[1] + 1;
+	local filename;
+	--live
+	if serverId == 1 then
+		filename = 'liverecipes.json';
+	elseif serverId == 2 then
+		filename = 'edenrecipes.json';
+	else
+		error('Bad server id when loading recipes');
+	end
+	--load in the recipe list
+	local f = io.open(addon.path .. '/data/' .. filename, 'rb');
+	if (f == nil) then
+		error('Failed to load spell list file. (/data/' .. filename .. ')');
+	end
+
+	-- Read the full file contents..
+	local c = f:read("*all");
+	f:close();
+
+	-- Parse the spell json data..
+	masterRecipe = T(json.decode(c) or {});
+end
+
+function load_paths()
+	--Recipe leveling lists based on server
+	local servername;
+	if crafter.server_id[1] == 0 then
+		servername = 'live';
+	elseif crafter.server_id[1] == 1 then
+		servername = 'eden';
+	end
+	
+	local path = addon.path .. '/profiles/' .. servername .. '/';
+	local tailorRecipe = dofile(path .. 'tailoring');
+	local armorRecipe = dofile(path .. 'armorcrafting');
+	local fletchRecipe = dofile(path .. 'fletching');
+	local spellRecipe = dofile(path .. 'spellcraft');
+
+	--local tailorRecipe = require('tailoring');
+	--local armorRecipe = require('armorcrafting');
+	--local fletchRecipe = require('fletching');
+	--local spellRecipe = require('spellcraft');
+
+	--Append to the recipe list - index correlates to combobox, crafter.selectedCraft[1] + 1
+	recipeList:append(T{'Weaponcraft'})
+	recipeList:append(armorRecipe);
+	recipeList:append(T{'Siegecraft'})
+	recipeList:append(T{'Alchemy'})
+	recipeList:append(T{'Metalworking'})
+	recipeList:append(T{'Leatherworking'})
+	recipeList:append(T{'Clothworking'})
+	recipeList:append(T{'Gemcutting'})
+	recipeList:append(T{'Herbcraft'})
+	recipeList:append(tailorRecipe);
+	recipeList:append(fletchRecipe);
+	recipeList:append(spellRecipe)
+	recipeList:append(T{'Woodworking'})
+	recipeList:append(T{'Bountycrafting'})
+	recipeList:append(T{'Basic Crafting'})
 end

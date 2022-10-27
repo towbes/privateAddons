@@ -1,0 +1,36 @@
+--The order of this table matches the string table in crafter.lua
+--local craftStrings = T {
+--	'Weaponcraft',
+--	'Armorcraft',
+--	'Siegecraft',
+--	'Alchemy',
+--	'Metalworking',
+--	'Leatherworking',
+--	'Clothworking',
+--	'Gemcutting',
+--	'Herbcraft',
+--	'Tailoring',
+--	'Fletching',
+--	'Spellcraft',
+--	'Woodworking',
+--	'Bountycrafting',
+--	'Basic Crafting',
+--};
+return T {
+	--Weaponcraft
+	T{'Weaponcraft'},
+	T{'Armorcraft'},
+	T{'Siegecraft'},
+	T{'Alchemy'},
+	T{'Metalworking'},
+	T{'Leatherworking'},
+	T{'Clothworking'},
+	T{'Gemcutting'},
+	T{'Herbcraft'},
+	T{'Tailoring'},
+	T{'Fletching'},
+	T{'Spellcraft'},
+	T{'Woodworking'},
+	T{'Bountycrafting'},
+	T{'Basic Crafting'},
+};
