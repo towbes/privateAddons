@@ -238,11 +238,11 @@ local default_settings = T{
 	buyingMats = false;
 	isTraining = false;
     vendorTargNameBuf = { 'Alastar MacDonnell' },
-    vendorTargNameSize = 20,
+    vendorTargNameSize = 30,
     craftTargNameBuf = { 'Alchemy Table' },
-    craftTargNameSize = 20,
+    craftTargNameSize = 30,
 	trainTargNameBuf = { 'Laisren' },
-	trainTargNameSize = 20,
+	trainTargNameSize = 30,
 	vendor_xLocBuf = { '28053' },
     vendor_xLocSize = 10,
 	vendor_yLocBuf = { '51726' },
@@ -480,7 +480,7 @@ hook.events.register('d3d_present', 'd3d_present_move', function ()
     end
 
 	if (crafter.ismoving) then
-		local tick_interval = math.random(5000,10000);
+		tick_interval = math.random(5000,10000);
 		if (hook.time.tick() >= (tick_holder + tick_interval) ) then	
 			tick_holder = hook.time.tick();
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('Do Tick'));
@@ -1016,7 +1016,7 @@ function checkMats()
 			local matname = matList[i].base_material_name .. ' ' .. matList[i].name;
 			--if the matname ends in an s, remove it
 			if matname:endswith('s') then
-				daoc.chat.msg(daoc.chat.message_mode.help, ('remove s'));
+				--daoc.chat.msg(daoc.chat.message_mode.help, ('remove s'));
 				matname = matname:sub(1, -2);
 			end
 			--trim whitespace
@@ -1180,8 +1180,8 @@ end
 function get_craftid(craftName, baseMat, category)
     local craftid = 0;
 
-	--live put basemat into name: field with a +x modifier based on status granted.
-	if crafter.server_id[1] == 0 then
+	--live spellcrafting put basemat into name: field with a +x modifier based on status granted.
+	if crafter.server_id[1] == 0 and craftName:contains('Spellcraft') then
 		--daoc.chat.msg(daoc.chat.message_mode.help, ('live'));
 		masterRecipe:each(function (v, k)
 			v:each(function (_, kk)
@@ -1195,14 +1195,30 @@ function get_craftid(craftName, baseMat, category)
 				end
 			end);
 		end);	
-	--eden uses base_material_name + category
-	elseif crafter.server_id[1] == 1 then
+	--alchemy doesn't use base material/category only name
+	elseif craftName:contains('Alchemy') then
+		local name = baseMat .. ' ' .. category;
 		masterRecipe:each(function (v, k)
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
 			v:each(function (_, kk)
-				if (_['profession'] == craftName) then
+				if (_['profession']:lower():contains(craftName:lower())) then
 					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:contains(category)) then
+					if (_['name']:ieq(name)) then
+						
+						craftid = _['id'];
+					end
+				end
+			end);
+		end);		
+	--eden uses base_material_name + category
+	--elseif crafter.server_id[1] == 1 then
+	else
+		masterRecipe:each(function (v, k)
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
+			v:each(function (_, kk)
+				if (_['profession']:lower():contains(craftName:lower())) then
+					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():startswith(category)) then
 						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(_['category']));
 						craftid = _['id'];
 					end
@@ -1233,15 +1249,29 @@ function get_materials(craftName, baseMat, category)
 				end
 			end);
 		end);	
-	--eden uses base_material_name + category
+	--alchemy doesn't use base material
+	elseif craftName:contains('Alchemy') then
+		local name = baseMat .. ' ' .. category;
+		masterRecipe:each(function (v, k)
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
+			v:each(function (_, kk)
+				if (_['profession']:lower():contains(craftName:lower())) then
+					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['name'], name));
+					if (_['name']:ieq(name)) then
+						matTable = _['materials'];
+					end
+				end
+			end);
+		end);		
+	--eden/other crafts uses base_material_name + category
 	--elseif crafter.server_id[1] == 1 then
 	else
 		masterRecipe:each(function (v, k)
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
 			v:each(function (_, kk)
-				if (_['profession'] == craftName) then
+				if (_['profession']:lower():contains(craftName:lower())) then
 					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:contains(category)) then
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():startswith(category)) then
 						
 						matTable = _['materials'];
 					end
@@ -1258,7 +1288,7 @@ function load_recipes()
 	--live
 	if crafter.server_id[1] == 0 then
 		filename = 'liverecipes.json';
-	elseif crafter.server_id[1] == 0 then
+	elseif crafter.server_id[1] == 1 then
 		filename = 'edenrecipes.json';
 	else
 		error('Bad server id when loading recipes');
@@ -1291,6 +1321,8 @@ function load_paths()
 	local fletchRecipe = dofile(path .. 'fletching.lua');
 	local spellRecipe = dofile(path .. 'spellcraft.lua');
 	local metalRecipe = dofile(path .. 'metalworking.lua');
+	local weaponRecipe = dofile(path .. 'weaponcrafting.lua');
+	local alchRecipe = dofile(path .. 'alchemy.lua');
 
 	--local tailorRecipe = require('tailoring');
 	--local armorRecipe = require('armorcrafting');
@@ -1298,10 +1330,10 @@ function load_paths()
 	--local spellRecipe = require('spellcraft');
 
 	--Append to the recipe list - index correlates to combobox, crafter.selectedCraft[1] + 1
-	recipeList:append(T{'Weaponcrafting'})
+	recipeList:append(weaponRecipe);
 	recipeList:append(T{'Armorcraft'});
 	recipeList:append(T{'Siegecraft'});
-	recipeList:append(T{'Alchemy'});
+	recipeList:append(alchRecipe);
 	recipeList:append(metalRecipe);
 	recipeList:append(T{'Leatherworking'});
 	recipeList:append(T{'Clothworking'});
