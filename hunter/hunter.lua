@@ -87,6 +87,26 @@ local function print_help(err)
 end
 
 --[[
+* Prints the addon specific help information.
+*
+* @param {level} level - Players current level
+* @param {comparelevel} comparelevel - Entitys current level
+--]]
+local function GetConColor(level, comparelevel)
+       
+    local constep = math.max(1, (level + 9) / 10);
+    local stepping = 1.0 / constep;
+    local leveldiff = level - comparelevel;
+
+    local concolor = 0 - leveldiff * stepping
+    
+    --daoc.chat.msg(daoc.chat.message_mode.help, "Level: " .. level .. " CompareLevel: " .. comparelevel .. " Con Color: " .. concolor);
+
+    return concolor;
+
+end
+
+--[[
 * event: command
 * desc : Called when the game is handling a command.
 --]]
@@ -155,6 +175,7 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                                 realm = ent.realm_id, 
                                 dist = math.distance2d(ent.x, ent.y, player.x, player.y),
                                 heading = direction,
+                                level = ent.level,
                                 health = ent.health});
                 
             end
@@ -173,12 +194,13 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                 imgui.SameLine();
                 imgui.PushItemWidth(350);
                 imgui.InputText("##FindName", hunter.findNameBuf, hunter.findNameBufSize);
-                if (imgui.BeginTable('##hunter_list', 6, bit.bor(ImGuiTableFlags_RowBg, ImGuiTableFlags_BordersH, ImGuiTableFlags_BordersV, ImGuiTableFlags_ContextMenuInBody, ImGuiTableFlags_ScrollX, ImGuiTableFlags_ScrollY, ImGuiTableFlags_SizingFixedFit))) then
+                if (imgui.BeginTable('##hunter_list', 7, bit.bor(ImGuiTableFlags_RowBg, ImGuiTableFlags_BordersH, ImGuiTableFlags_BordersV, ImGuiTableFlags_ContextMenuInBody, ImGuiTableFlags_ScrollX, ImGuiTableFlags_ScrollY, ImGuiTableFlags_SizingFixedFit))) then
                     imgui.TableSetupColumn('Idx', ImGuiTableColumnFlags_WidthFixed, 30.0, 0);
                     imgui.TableSetupColumn('Distance', ImGuiTableColumnFlags_WidthFixed, 50.0, 0);
                     imgui.TableSetupColumn('Direction', ImGuiTableColumnFlags_WidthFixed, 50.0, 0);
                     imgui.TableSetupColumn('Realm', ImGuiTableColumnFlags_WidthFixed, 30.0, 0);
                     imgui.TableSetupColumn('HP', ImGuiTableColumnFlags_WidthFixed, 30.0, 0);
+                    imgui.TableSetupColumn('Level', ImGuiTableColumnFlags_WidthFixed, 30.0, 0);
                     imgui.TableSetupColumn('Name', ImGuiTableColumnFlags_WidthStretch, 0, 0);
                     imgui.TableSetupScrollFreeze(0, 1);
                     imgui.TableHeadersRow();
@@ -209,6 +231,8 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                             imgui.TableNextColumn();
                             imgui.Text(('%d'):fmt(entList[x].health));
                             imgui.TableNextColumn();
+                            imgui.Text(('%d'):fmt(entList[x].level));
+                            imgui.TableNextColumn();
                             imgui.Text(('%s'):fmt(entList[x].name));
                             imgui.PopID();
                         end
@@ -216,7 +240,7 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                     --entList:each(function (v,k)
                     --    if (v.name == nil or v.name == nil) then return; end
                     --    if (v.name:lower():contains(hunter.findNameBuf[1]:lower())) then
---
+                    
                     --    end
                     --end);
                     imgui.EndTable();
@@ -225,45 +249,121 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
             end
         end
     end
-    --local wSizeX = 400;
-    --local wSizeY = 400;
-    --local MaxDist = 4000;
-    --imgui.SetNextWindowSize(T{ wSizeX, wSizeY, }, ImGuiCond_FirstUseEver);
-    --if (imgui.Begin('Map')) then
-    --    imgui.SetWindowFontScale(0.8)
-    --    local draw_list = imgui.GetWindowDrawList();
-    --    local x, y = imgui.GetCursorScreenPos();
-    --    local color = imgui.GetColorU32({1, 0.3, 0.4, 1});
-    --    draw_list:AddCircle({(x + wSizeX/2), (y + wSizeY/2)}, 3, color, 6, 3 );
 
-    --    for x=1, entList:len() do
-    --        --Offset offset = CalculateOffset(p);
-    --        local offx, offy = CalcOffset(entList[x].x, entList[x].y, player.x, player.y)
-    --        if offx == nil or offy == nil then
-    --            goto continue;
-    --        end
-    --        --// don't need to draw players out of range
-    --        --if (offset.x > maxRange || offset.x < -maxRange || offset.y > maxRange || offset.y < -maxRange) continue;
-    --        if (offx > MaxDist or offx < -MaxDist or offy > MaxDist or offy < -MaxDist) then goto continue; end
-    --        --// gui position of player
-    --        local playerPos = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2)), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
-    --        local playerName = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2)), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2) - 3)}
-    --
-    --        --// add that stuff to draw list
-    --        --draw_list->AddText(pos, IM_COL32_WHITE, p->name.c_str());
-    --        local nameColor = imgui.GetColorU32({1.0, 1.0, 1.0, 1.0});
-    --        draw_list:AddText(playerName, nameColor, entList[x].name);
-    --        local dotColor = imgui.GetColorU32({1, .15, .15, 1});
-    --        draw_list:AddCircle(playerPos, 3, dotColor, 6, 3 );
-    --        --draw_list->AddCircle(ImVec2(pos), 1.0f, ImGui::ColorConvertFloat4ToU32(ImVec4(1, .15, .15, 1)), 6, 1.0f);
-    --        ::continue::
-    --    end
-    --end
+    local wSizeX = 400;
+    local wSizeY = 400;
+    local MaxDist = 4000;
+    imgui.SetNextWindowSize(T{ wSizeX, wSizeY, }, ImGuiCond_FirstUseEver);
+    if (imgui.Begin('Map')) then
+        imgui.SetWindowFontScale(0.8)
+        local draw_list = imgui.GetWindowDrawList();
+        local x, y = imgui.GetCursorScreenPos();
+        local color = imgui.GetColorU32({1, 0.3, 0.4, 1});
+        draw_list:AddCircle({(x + wSizeX/2), (y + wSizeY/2)}, 3, color, 6, 3 );
+
+        for x=1, entList:len() do
+
+            -- Eliminates crashing if an object doesn't have a name. -randomc0der
+            if (entList[x].name == nil) then goto continue; end
+
+            -- TODO: enhance the script to allow filters to be applied to ignore various object types.
+            if (entList[x].name ~= "door") then
+
+                --Offset offset = CalculateOffset(p);
+                local offx, offy = CalcOffset(entList[x].x, entList[x].y, player.x, player.y)
+                if offx == nil or offy == nil then
+                    goto continue;
+                end
+
+                --// don't need to draw players out of range
+                --if (offset.x > maxRange || offset.x < -maxRange || offset.y > maxRange || offset.y < -maxRange) continue;
+                if (offx > MaxDist or offx < -MaxDist or offy > MaxDist or offy < -MaxDist) then goto continue; end
+
+                --// gui position of player
+                local playerPos = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2)), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
+                local playerName = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2) + 1), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
+    
+                --// add that stuff to draw list
+                --draw_list->AddText(pos, IM_COL32_WHITE, p->name.c_str());
+                --GetConColor(daoc.player.get_level(),entList[x].level);
+                
+                --daoc.chat.msg(daoc.chat.message_mode.help, "Level: " .. daoc.player.get_level() .. " CompareLevel: " .. entList[x].level);
+                
+                
+                --[[
+                Randomcoder:
+                
+                Get the CON Color - this isn't working correctly, doesnt match up with what the client shows. disabled for now.
+
+                local conColor = GetConColor(daoc.player.get_level(),entList[x].level);
+                local nameColor = imgui.GetColorU32({1, 1, 1, 1});
+                
+                -- -3- = grey
+                if conColor <= -3 then
+                    nameColor = imgui.GetColorU32({.377, .377, .377, 1.0});
+            
+                -- -2 = green
+                elseif conColor <= -2 and conColor > -3 then
+                    nameColor = imgui.GetColorU32({.038, .348, .111, 1.0});
+            
+                -- -1 = blue  (compareLevel is 1 con lower)
+                elseif conColor < 0 and conColor >= -1 then
+                    nameColor = imgui.GetColorU32({0, .26, .98, 1});
+            
+                -- 0 = yellow (same level)
+                elseif conColor == 0 then
+                    nameColor = imgui.GetColorU32({.98, .75, 0, 1});
+            
+                -- 1 = orange (compareLevel is 1 con higher)
+                elseif conColor < 2 and conColor > 1 then
+                    nameColor = imgui.GetColorU32({.985, .354, .010, 1});
+            
+                -- 2 = red
+                elseif conColor < 2 and conColor > 3 then
+                    nameColor = imgui.GetColorU32({1, .15, .15, 1});
+            
+                -- 3+ = violet
+                elseif conColor >= 3 then
+                    nameColor = imgui.GetColorU32({.497, .010, .985, 1});
+
+                -- if for whatever reason nothing else matches, lets use Brown
+                else
+                    nameColor = imgui.GetColorU32({.461, .233, .174, 1});
+                end
+
+                draw_list:AddText(playerName, nameColor, entList[x].name .. "(" .. entList[x].level .. ")");
+                ]]--
+
+                local nameColor = imgui.GetColorU32({1, 1, 1, 1});
+                draw_list:AddText(playerName, nameColor, entList[x].name .. "(" .. entList[x].level .. ")");
+
+                -- default color to yellow (mob color), if a realm ID is found color code it.
+                local dotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- default to yellow
+
+                if (realmStr[entList[x].realm] == "Alb") then
+                    dotColor = imgui.GetColorU32({1, .15, .15, 1}); -- Red color
+
+                elseif  (realmStr[entList[x].realm] == "Hib") then
+                    dotColor = imgui.GetColorU32({.29, .98, .0, 1}); -- Green Color
+            
+                elseif  (realmStr[entList[x].realm] == "Mid") then
+                    dotColor = imgui.GetColorU32({0, .26, .98, 1});  -- Blue color
+
+                else
+                    dotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- Yellow color
+
+                end
+
+                draw_list:AddCircle(playerPos, 3, dotColor, 6, 3 );
+                   
+            end
+            ::continue::                   
+        end
+    end
 
     imgui.End();
 
 end);   
-
 
 function GetGameHeading(playerX, playerY, targX, targY)
     local dx = targX - playerX;
