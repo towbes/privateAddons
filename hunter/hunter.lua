@@ -37,7 +37,11 @@ local hunter = T {
     findNameBufSize = 100,
     playersOnly = T { false, },
     selected_item = T {0,},
+    --chkBoxFilter_Objects = T { false, },
+    --chkBoxFilter_Mobs = T { false, },
+    --chkBoxFilter_Players = T { false, },
 };
+
 
 local realmStr = T {'Alb', 'Mid', 'Hib' }
 
@@ -250,24 +254,38 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
         end
     end
 
-    local wSizeX = 400;
-    local wSizeY = 400;
+    local wSizeX = 530;
+    local wSizeY = 530;
     local MaxDist = 4000;
+
+    --// Radar Map Code
     imgui.SetNextWindowSize(T{ wSizeX, wSizeY, }, ImGuiCond_FirstUseEver);
-    if (imgui.Begin('Map')) then
-        imgui.SetWindowFontScale(0.8)
+    if (imgui.Begin('Info', ImGuiWindowFlags_NoMouseInputs )) then
+        local scale = 1
+        imgui.SetWindowFontScale(scale)
         local draw_list = imgui.GetWindowDrawList();
-        local x, y = imgui.GetCursorScreenPos();
-        local color = imgui.GetColorU32({1, 0.3, 0.4, 1});
-        draw_list:AddCircle({(x + wSizeX/2), (y + wSizeY/2)}, 3, color, 6, 3 );
-
+        local mouseX, mouseY = imgui.GetCursorScreenPos();
+        
+        --imgui.Text("Filters: ");
+        --imgui.SameLine();
+        --imgui.Checkbox('Hide Objects', hunter.chkBoxFilter_Objects);
+        --imgui.SameLine();
+        --imgui.Checkbox('Hide Mobs', hunter.chkBoxFilter_Mobs);
+        --imgui.SameLine();
+        --imgui.Checkbox('Hide Players', hunter.chkBoxFilter_Players);
+        
+        local playerDotColor = imgui.GetColorU32({1, 0.3, 0.4, 1});
+        draw_list:AddCircle({(mouseX + wSizeX/2), (mouseY + wSizeY/2)}, 3, playerDotColor, 6, 3 );
+        
+        --draw_list:AddTriangleFilled(ImVec2(50, 100), ImVec2(100, 50), ImVec2(150, 100), ImColor(255, 0, 0))
+       
         for x=1, entList:len() do
+                --if (entList[x].name == "horse") then goto continue; end
 
-            -- Eliminates crashing if an object doesn't have a name. -randomc0der
-            if (entList[x].name == nil) then goto continue; end
+                -- Eliminates crashing if an object doesn't have a name. -randomc0der
+                if (entList[x].name ~= nil) then
 
-            -- TODO: enhance the script to allow filters to be applied to ignore various object types.
-            if (entList[x].name ~= "door") then
+                --daoc.chat.msg(daoc.chat.message_mode.help, "Object Type: " .. entList[x]. .. " Mob Name: " .. entList[x].name);
 
                 --Offset offset = CalculateOffset(p);
                 local offx, offy = CalcOffset(entList[x].x, entList[x].y, player.x, player.y)
@@ -276,85 +294,33 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                 end
 
                 --// don't need to draw players out of range
-                --if (offset.x > maxRange || offset.x < -maxRange || offset.y > maxRange || offset.y < -maxRange) continue;
                 if (offx > MaxDist or offx < -MaxDist or offy > MaxDist or offy < -MaxDist) then goto continue; end
 
                 --// gui position of player
-                local playerPos = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2)), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
-                local playerName = {x + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2) + 1), y + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
-    
-                --// add that stuff to draw list
-                --draw_list->AddText(pos, IM_COL32_WHITE, p->name.c_str());
-                --GetConColor(daoc.player.get_level(),entList[x].level);
+                local entityNameLoc = {mouseX + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2) + 1), mouseY + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
+                local entityNameColor = imgui.GetColorU32({1, 1, 1, 1});
+
+                draw_list:AddText(entityNameLoc, entityNameColor, entList[x].name .. "(" .. entList[x].level .. ")");
                 
-                --daoc.chat.msg(daoc.chat.message_mode.help, "Level: " .. daoc.player.get_level() .. " CompareLevel: " .. entList[x].level);
+                --// Calculate entity position on the map
+                local entityDotLoc = {mouseX + wSizeX / 2 + offx / (MaxDist / (wSizeX / 2)), mouseY + wSizeY / 2 + offy / (MaxDist / (wSizeY / 2))}
                 
-                
-                --[[
-                Randomcoder:
-                
-                Get the CON Color - this isn't working correctly, doesnt match up with what the client shows. disabled for now.
+                --// Default enity color to yellow, if a realm ID is found color code it.
+                local entityDotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- default to yellow
 
-                local conColor = GetConColor(daoc.player.get_level(),entList[x].level);
-                local nameColor = imgui.GetColorU32({1, 1, 1, 1});
-                
-                -- -3- = grey
-                if conColor <= -3 then
-                    nameColor = imgui.GetColorU32({.377, .377, .377, 1.0});
-            
-                -- -2 = green
-                elseif conColor <= -2 and conColor > -3 then
-                    nameColor = imgui.GetColorU32({.038, .348, .111, 1.0});
-            
-                -- -1 = blue  (compareLevel is 1 con lower)
-                elseif conColor < 0 and conColor >= -1 then
-                    nameColor = imgui.GetColorU32({0, .26, .98, 1});
-            
-                -- 0 = yellow (same level)
-                elseif conColor == 0 then
-                    nameColor = imgui.GetColorU32({.98, .75, 0, 1});
-            
-                -- 1 = orange (compareLevel is 1 con higher)
-                elseif conColor < 2 and conColor > 1 then
-                    nameColor = imgui.GetColorU32({.985, .354, .010, 1});
-            
-                -- 2 = red
-                elseif conColor < 2 and conColor > 3 then
-                    nameColor = imgui.GetColorU32({1, .15, .15, 1});
-            
-                -- 3+ = violet
-                elseif conColor >= 3 then
-                    nameColor = imgui.GetColorU32({.497, .010, .985, 1});
-
-                -- if for whatever reason nothing else matches, lets use Brown
-                else
-                    nameColor = imgui.GetColorU32({.461, .233, .174, 1});
-                end
-
-                draw_list:AddText(playerName, nameColor, entList[x].name .. "(" .. entList[x].level .. ")");
-                ]]--
-
-                local nameColor = imgui.GetColorU32({1, 1, 1, 1});
-                draw_list:AddText(playerName, nameColor, entList[x].name .. "(" .. entList[x].level .. ")");
-
-                -- default color to yellow (mob color), if a realm ID is found color code it.
-                local dotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- default to yellow
-
+                --// Convert RealmID to Name and Color
                 if (realmStr[entList[x].realm] == "Alb") then
-                    dotColor = imgui.GetColorU32({1, .15, .15, 1}); -- Red color
-
+                    entityDotColor = imgui.GetColorU32({1, .15, .15, 1}); -- Red color
                 elseif  (realmStr[entList[x].realm] == "Hib") then
-                    dotColor = imgui.GetColorU32({.29, .98, .0, 1}); -- Green Color
-            
+                    entityDotColor = imgui.GetColorU32({.29, .98, .0, 1}); -- Green Color
                 elseif  (realmStr[entList[x].realm] == "Mid") then
-                    dotColor = imgui.GetColorU32({0, .26, .98, 1});  -- Blue color
-
+                    entityDotColor = imgui.GetColorU32({0, .26, .98, 1});  -- Blue color
                 else
-                    dotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- Yellow color
-
+                    entityDotColor = imgui.GetColorU32({.98, .75, 0, 1}); -- Yellow color
                 end
-
-                draw_list:AddCircle(playerPos, 3, dotColor, 6, 3 );
+                
+                --// Draw enity on the map
+                draw_list:AddCircle(entityDotLoc, 3, entityDotColor, 6, 3 );
                    
             end
             ::continue::                   
