@@ -37,10 +37,15 @@ local hunter = T {
     findNameBufSize = 100,
     playersOnly = T { false, },
     selected_item = T {0,},
-    --chkBoxFilter_Objects = T { false, },
-    --chkBoxFilter_Mobs = T { false, },
-    --chkBoxFilter_Players = T { false, },
+    --chkBoxFilterBar_Objects = T { false, },
+    --chkBoxFilterBar_Mobs = T { false, },
+    --chkBoxFilterBar_Players = T { false, },
+    chkBoxFilterBar_LockRadar = T { false, },
+    chkBoxFilterBar_ZHelper = T { false, },
+    radarScale = 1.0,
+    radarScaleSize = 1,
 };
+
 
 
 local realmStr = T {'Alb', 'Mid', 'Hib' }
@@ -88,26 +93,6 @@ local function print_help(err)
     end);
 
     help('/hunter', 'Sell items between slots (must be between 40 and 79)');
-end
-
---[[
-* Prints the addon specific help information.
-*
-* @param {level} level - Players current level
-* @param {comparelevel} comparelevel - Entitys current level
---]]
-local function GetConColor(level, comparelevel)
-       
-    local constep = math.max(1, (level + 9) / 10);
-    local stepping = 1.0 / constep;
-    local leveldiff = level - comparelevel;
-
-    local concolor = 0 - leveldiff * stepping
-    
-    --daoc.chat.msg(daoc.chat.message_mode.help, "Level: " .. level .. " CompareLevel: " .. comparelevel .. " Con Color: " .. concolor);
-
-    return concolor;
-
 end
 
 --[[
@@ -180,19 +165,16 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                                 dist = math.distance2d(ent.x, ent.y, player.x, player.y),
                                 heading = direction,
                                 level = ent.level,
-                                health = ent.health});
-                
+                                health = ent.health});     
             end
             ::continue::
         end
-        --imgui.Text(("index %d, %s\n"):fmt(i, itemTemp.id, itemTemp.name));
     end
     -- Render a custom example inventory via ImGui..
     imgui.SetNextWindowSize(T{ 350, 200, }, ImGuiCond_FirstUseEver);
     if (imgui.Begin('Hunter')) then
         if (imgui.BeginTabBar('##hunter_tabbar', ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) then
             if (imgui.BeginTabItem('Find', nil)) then
-                
                 imgui.Checkbox('PlayersOnly', hunter.playersOnly);
                 imgui.Text("Search name:")
                 imgui.SameLine();
@@ -241,14 +223,14 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                             imgui.PopID();
                         end
                     end
-                    --entList:each(function (v,k)
-                    --    if (v.name == nil or v.name == nil) then return; end
-                    --    if (v.name:lower():contains(hunter.findNameBuf[1]:lower())) then
-                    
-                    --    end
-                    --end);
                     imgui.EndTable();
                 end
+                imgui.EndTabItem();
+            end
+
+            if (imgui.BeginTabItem('Radar Options', nil)) then                   
+                    imgui.Checkbox('Lock Radar - This removes the window title, enables click through, and transparent.', hunter.chkBoxFilterBar_LockRadar);
+                    
                 imgui.EndTabItem();
             end
         end
@@ -257,35 +239,36 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
     local wSizeX = 530;
     local wSizeY = 530;
     local MaxDist = 4000;
+    local windowFlagsRadar = ImGuiWindowFlags_None;
 
+    if (hunter.chkBoxFilterBar_LockRadar[1]) then
+        windowFlagsRadar = bit.bor(ImGuiWindowFlags_NoInputs, ImGuiWindowFlags_NoBackground, ImGuiWindowFlags_NoTitleBar);
+    else
+        windowFlagsRadar = ImGuiWindowFlags_None;
+    end
+
+
+   
     --// Radar Map Code
     imgui.SetNextWindowSize(T{ wSizeX, wSizeY, }, ImGuiCond_FirstUseEver);
-    if (imgui.Begin('Info', ImGuiWindowFlags_NoMouseInputs )) then
-        local scale = 1
+    if (imgui.Begin('Info', true, windowFlagsRadar)) then
+        local scale = 2
         imgui.SetWindowFontScale(scale)
+        
         local draw_list = imgui.GetWindowDrawList();
-        local mouseX, mouseY = imgui.GetCursorScreenPos();
-        
-        --imgui.Text("Filters: ");
-        --imgui.SameLine();
-        --imgui.Checkbox('Hide Objects', hunter.chkBoxFilter_Objects);
-        --imgui.SameLine();
-        --imgui.Checkbox('Hide Mobs', hunter.chkBoxFilter_Mobs);
-        --imgui.SameLine();
-        --imgui.Checkbox('Hide Players', hunter.chkBoxFilter_Players);
-        
+        local mouseX, mouseY = imgui.GetCursorScreenPos();       
         local playerDotColor = imgui.GetColorU32({1, 0.3, 0.4, 1});
-        draw_list:AddCircle({(mouseX + wSizeX/2), (mouseY + wSizeY/2)}, 3, playerDotColor, 6, 3 );
+        draw_list:AddCircle({(mouseX + wSizeX/2), (mouseY + wSizeY/2)}, 3+scale, playerDotColor, 6, 3+scale );
         
         --draw_list:AddTriangleFilled(ImVec2(50, 100), ImVec2(100, 50), ImVec2(150, 100), ImColor(255, 0, 0))
        
         for x=1, entList:len() do
+
+                
                 --if (entList[x].name == "horse") then goto continue; end
 
                 -- Eliminates crashing if an object doesn't have a name. -randomc0der
                 if (entList[x].name ~= nil) then
-
-                --daoc.chat.msg(daoc.chat.message_mode.help, "Object Type: " .. entList[x]. .. " Mob Name: " .. entList[x].name);
 
                 --Offset offset = CalculateOffset(p);
                 local offx, offy = CalcOffset(entList[x].x, entList[x].y, player.x, player.y)
@@ -320,7 +303,7 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                 end
                 
                 --// Draw enity on the map
-                draw_list:AddCircle(entityDotLoc, 3, entityDotColor, 6, 3 );
+                draw_list:AddCircle(entityDotLoc, 3+scale, entityDotColor, 6, 3+scale);
                    
             end
             ::continue::                   
