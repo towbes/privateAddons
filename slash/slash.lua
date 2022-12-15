@@ -304,6 +304,8 @@ end);
 --pause time to buy mats and interact with vendor
 local tick_holder = hook.time.tick();
 local tick_interval = 1200;
+local buff_holder = hook.time.tick();
+local buff_interval = 5000;
 
 local currTarget = 0;
 
@@ -339,7 +341,10 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
 
             --only heal if we are targetting the assist
             if (target.object_type == daoc.entity.type.player) then
-                checkBuffs();
+                if (hook.time.tick() >= (buff_holder + buff_interval) ) then
+                    buff_holder = hook.time.tick();
+                    checkBuffs();
+                end
                 if not assist.doneBuffing then
                     return
                 end
@@ -617,7 +622,7 @@ function checkBuffs()
     for i=1, confbuffs:len() do
         --check if we have the buff
         bcheck = false;
-        for n=1, 75 do
+        for n=0, 74 do
             if mybuffs[n].name:len() > 0 and mybuffs[n].name:ieq(confbuffs[i]) then
                 bcheck = true;
             end
