@@ -1,84 +1,33 @@
 return T {
 	--[1] = Alb , [2] = Mid, [3] = Hib
 	T{
-		--alb
 		--tier 1
 		T{
-			T{level = 15, name = 'rawhide roman gloves',},
-			T{level = 45, name = 'rawhide roman boots',},
-			T{level = 65, name = 'rawhide cymric boots',},
-			T{level = 95, name = 'rawhide siluric gloves',},
+			T{level = 15, name = 'bronze bracket',},
+			T{level = 25, name = 'bronze wrought jewelry box',},
+			T{level = 50, name = 'bronze hinge',},
+			T{level = 75, name = 'bronze small lantern',},
 		},
 		--Tier 2
 		T{
-			T{level = 15, name = 'tanned roman gloves',},
-			T{level = 45, name = 'tanned roman boots',},
-			T{level = 65, name = 'tanned cymric boots',},
-			T{level = 95, name = 'tanned siluric gloves',},
+			T{level = 15, name = 'iron bracket',},
+			T{level = 25, name = 'iron wrought jewelry box',},
+			T{level = 50, name = 'iron hinge',},
+			T{level = 75, name = 'iron small lantern',},
 		},
 		--Tier 3
 		T{
-			T{level = 15, name = 'cured roman gloves',},
-			T{level = 45, name = 'cured roman boots',},
-			T{level = 65, name = 'cured cymric boots',},
-			T{level = 95, name = 'cured siluric gloves',},
+			T{level = 15, name = 'steel bracket',},
+			T{level = 25, name = 'steel wrought jewelry box',},
+			T{level = 50, name = 'steel hinge',},
+			T{level = 75, name = 'steel small lantern',},
 		},
 		--Tier 4
 		T{
-			T{level = 15, name = 'hard roman gloves',},
-			T{level = 45, name = 'hard roman boots',},
-			T{level = 65, name = 'hard cymric boots',},
-			T{level = 95, name = 'hard siluric gloves',},
-		},
-		--Tier 5
-		T{
-			T{level = 15, name = 'rigid roman gloves',},
-			T{level = 45, name = 'rigid roman boots',},
-			T{level = 65, name = 'rigid cymric boots',},
-			T{level = 95, name = 'rigid siluric gloves',},
-		},
-		--Tier 6
-		T{
-			T{level = 15, name = 'embossed roman gloves',},
-			T{level = 45, name = 'embossed roman boots',},
-			T{level = 65, name = 'embossed cymric boots',},
-			T{level = 95, name = 'embossed siluric gloves',},
-		},
-		--Tier 7
-		T{
-			T{level = 15, name = 'imbued roman gloves',},
-			T{level = 45, name = 'imbued roman boots',},
-			T{level = 65, name = 'imbued cymric boots',},
-			T{level = 95, name = 'imbued siluric gloves',},
-		},
-		--Tier 8
-		T{
-			T{level = 15, name = 'runed roman gloves',},
-			T{level = 45, name = 'runed roman boots',},
-			T{level = 65, name = 'runed cymric boots',},
-			T{level = 95, name = 'runed siluric gloves',},
-		},
-		--Tier 9
-		T{
-			T{level = 15, name = 'eldritch roman gloves',},
-			T{level = 45, name = 'eldritch roman boots',},
-			T{level = 65, name = 'eldritch cymric boots',},
-			T{level = 95, name = 'eldritch siluric gloves',},
-		},
-		--Tier 10
-		T{
-			T{level = 15, name = 'tempered roman gloves',},
-			T{level = 45, name = 'tempered roman boots',},
-			T{level = 65, name = 'tempered cymric boots',},
-			T{level = 95, name = 'tempered siluric gloves',},
-		},
-		--Tier 10
-		T{
-			T{level = 10, name = 'tempered siluric gloves',},
-			T{level = 35, name = 'tempered siluric boots',},
-			T{level = 45, name = 'padded tempered siluric gloves',},
-			T{level = 65, name = 'padded tempered siluric boots',},
-			T{level = 95, name = 'padded tempered siluric gloves',},
+			T{level = 15, name = 'alloy bracket',},
+			T{level = 25, name = 'alloy wrought jewelry box',},
+			T{level = 50, name = 'alloy hinge',},
+			T{level = 75, name = 'alloy small lantern',},
 		},
 	},
 	T{	

@@ -1,93 +1,91 @@
 return T {
+
 	--[1] = Alb , [2] = Mid, [3] = Hib
 	T{
 		--alb
 		--tier 1
 		T{
-			T{level = 16, name = 'bronze dirk',},
-			T{level = 35, name = 'bronze main gauche',},
-			T{level = 55, name = 'bronze flanged mace',},
-			T{level = 75, name = 'bronze rapier',},
-			T{level = 80, name = 'rowan round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 		--Tier 2
 		T{
-			T{level = 15, name = 'iron dirk',},
-			T{level = 35, name = 'iron dagger',},
-			T{level = 55, name = 'iron stiletto',},
-			T{level = 75, name = 'iron hammer',},
-			T{level = 90, name = 'elm round shield',},
+			T{level = 15, name = 'iron studded gauntlets',},
+			T{level = 45, name = 'iron studded boots',},
+			T{level = 65, name = 'iron boned boots',},
+			T{level = 95, name = 'iron lamellar gauntlets',},
 		},
 		--Tier 3
 		T{
-			T{level = 15, name = 'steel dirk',},
-			T{level = 35, name = 'steel dagger',},
-			T{level = 55, name = 'steel stiletto',},
-			T{level = 75, name = 'steel hammer',},
-			T{level = 90, name = 'oaken round shield',},
+			T{level = 15, name = 'steel studded gauntlets',},
+			T{level = 45, name = 'steel studded boots',},
+			T{level = 65, name = 'steel boned boots',},
+			T{level = 95, name = 'steel lamellar gauntlets',},
 		},
 		--Tier 4
 		T{
-			T{level = 15, name = 'alloy dirk',},
-			T{level = 35, name = 'alloy dagger',},
-			T{level = 55, name = 'alloy stiletto',},
-			T{level = 75, name = 'alloy hammer',},
-			T{level = 90, name = 'ironwood round shield',},
+			T{level = 15, name = 'alloy studded gauntlets',},
+			T{level = 45, name = 'alloy studded boots',},
+			T{level = 65, name = 'alloy boned boots',},
+			T{level = 95, name = 'alloy lamellar gauntlets',},
 		},
 		--Tier 5
 		T{
-			T{level = 15, name = 'fine dirk',},
-			T{level = 35, name = 'fine dagger',},
-			T{level = 55, name = 'fine stiletto',},
-			T{level = 75, name = 'fine hammer',},
-			T{level = 90, name = 'heartwood round shield',},
+			T{level = 15, name = 'fine alloy studded gauntlets',},
+			T{level = 45, name = 'fine alloy studded boots',},
+			T{level = 65, name = 'fine alloy boned boots',},
+			T{level = 95, name = 'fine alloy lamellar gauntlets',},
 		},
 		--Tier 6
 		T{
-			T{level = 15, name = 'carbide dirk',},
-			T{level = 35, name = 'carbide dagger',},
-			T{level = 55, name = 'carbide stiletto',},
-			T{level = 75, name = 'carbide hammer',},
-			T{level = 90, name = 'runewood round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 		--Tier 7
 		T{
-			T{level = 15, name = 'sapphire dirk',},
-			T{level = 35, name = 'sapphire dagger',},
-			T{level = 55, name = 'sapphire stiletto',},
-			T{level = 75, name = 'sapphire hammer',},
-			T{level = 90, name = 'stonewood round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 		--Tier 8
 		T{
-			T{level = 15, name = 'diamond dirk',},
-			T{level = 35, name = 'diamond dagger',},
-			T{level = 55, name = 'diamond stiletto',},
-			T{level = 75, name = 'diamond hammer',},
-			T{level = 90, name = 'ebonwood round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 		--Tier 9
 		T{
-			T{level = 15, name = 'netherite dirk',},
-			T{level = 35, name = 'netherite dagger',},
-			T{level = 55, name = 'netherite stiletto',},
-			T{level = 75, name = 'netherite hammer',},
-			T{level = 90, name = 'dyrwood round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 		--Tier 10
 		T{
-			T{level = 15, name = 'arcanite dirk',},
-			T{level = 35, name = 'arcanite dagger',},
-			T{level = 55, name = 'arcanite stiletto',},
-			T{level = 75, name = 'arcanite hammer',},
-			T{level = 90, name = 'duskwood round shield',},
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
+		},
+		--Tier 10
+		T{
+			T{level = 15, name = 'bronze studded gauntlets',},
+			T{level = 45, name = 'bronze studded boots',},
+			T{level = 65, name = 'bronze boned boots',},
+			T{level = 95, name = 'bronze lamellar gauntlets',},
 		},
 	},
 	T{	
 		--mid
 		--tier 1
 		T{
-			T{level = 16, name = 'copper dirk',},
+			T{level = 15, name = 'copper dirk',},
 			T{level = 35, name = 'copper dagger',},
 			T{level = 55, name = 'copper stiletto',},
 			T{level = 75, name = 'copper hammer',},
@@ -169,7 +167,7 @@ return T {
 	T{	--hib
 		--tier 1
 		T{
-			T{level = 16, name = 'copper dirk',},
+			T{level = 15, name = 'copper dirk',},
 			T{level = 35, name = 'copper dagger',},
 			T{level = 55, name = 'copper stiletto',},
 			T{level = 75, name = 'copper hammer',},
@@ -247,5 +245,5 @@ return T {
 			T{level = 75, name = 'arcanite hammer',},
 			T{level = 90, name = 'duskwood round shield',},
 		},
-	}
+	},
 }

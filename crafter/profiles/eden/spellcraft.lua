@@ -5,82 +5,82 @@ return T {
 		--tier 1
 		T{
 			T{level = 19, name = 'raw Earthen Essence Jewel',},
-			T{level = 41, name = 'raw Earthen War Sigil Stone',},
+			T{level = 41, name = 'raw Earthen War Sigil',},
 			T{level = 65, name = 'raw Blood Essence Jewel',},
-			T{level = 84, name = 'raw Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'raw Airy Fervor Sigil',},
 			T{level = 99, name = 'raw Earthen Shielding Jewel',},
 			
 		},
 		--Tier 2
 		T{
 			T{level = 19, name = 'uncut Earthen Essence Jewel',},
-			T{level = 41, name = 'uncut Earthen War Sigil Stone',},
+			T{level = 41, name = 'uncut Earthen War Sigil',},
 			T{level = 65, name = 'uncut Blood Essence Jewel',},
-			T{level = 84, name = 'uncut Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'uncut Airy Fervor Sigil',},
 			T{level = 99, name = 'uncut Earthen Shielding Jewel',},
 		},
 		--Tier 3
 		T{
 			T{level = 19, name = 'rough Earthen Essence Jewel',},
-			T{level = 41, name = 'rough Earthen War Sigil Stone',},
+			T{level = 41, name = 'rough Earthen War Sigil',},
 			T{level = 65, name = 'rough Blood Essence Jewel',},
-			T{level = 84, name = 'rough Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'rough Airy Fervor Sigil',},
 			T{level = 99, name = 'rough Earthen Shielding Jewel',},
 		},
 		--Tier 4
 		T{
 			T{level = 19, name = 'Flawed Earthen Essence Jewel',},
-			T{level = 41, name = 'Flawed Earthen War Sigil Stone',},
+			T{level = 41, name = 'Flawed Earthen War Sigil',},
 			T{level = 65, name = 'Flawed Blood Essence Jewel',},
-			T{level = 84, name = 'Flawed Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'Flawed Airy Fervor Sigil',},
 			T{level = 99, name = 'Flawed Earthen Shielding Jewel',},
 		},
 		--Tier 5
 		T{
 			T{level = 19, name = 'imperfect Earthen Essence Jewel',},
-			T{level = 41, name = 'imperfect Earthen War Sigil Stone',},
+			T{level = 41, name = 'imperfect Earthen War Sigil',},
 			T{level = 65, name = 'imperfect Blood Essence Jewel',},
-			T{level = 84, name = 'imperfect Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'imperfect Airy Fervor Sigil',},
 			T{level = 99, name = 'imperfect Earthen Shielding Jewel',},
 		},
 		--Tier 6
 		T{
 			T{level = 19, name = 'polished Earthen Essence Jewel',},
-			T{level = 41, name = 'polished Earthen War Sigil Stone',},
+			T{level = 41, name = 'polished Earthen War Sigil',},
 			T{level = 65, name = 'polished Blood Essence Jewel',},
-			T{level = 84, name = 'polished Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'polished Airy Fervor Sigil',},
 			T{level = 99, name = 'polished Earthen Shielding Jewel',},
 		},
 		--Tier 7
 		T{
 			T{level = 19, name = 'faceted Earthen Essence Jewel',},
-			T{level = 41, name = 'faceted Earthen War Sigil Stone',},
+			T{level = 41, name = 'faceted Earthen War Sigil',},
 			T{level = 65, name = 'faceted Blood Essence Jewel',},
-			T{level = 84, name = 'faceted Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'faceted Airy Fervor Sigil',},
 			T{level = 99, name = 'faceted Earthen Shielding Jewel',},
 		},
 		--Tier 8
 		T{
 			T{level = 19, name = 'precious Earthen Essence Jewel',},
-			T{level = 41, name = 'precious Earthen War Sigil Stone',},
+			T{level = 41, name = 'precious Earthen War Sigil',},
 			T{level = 65, name = 'precious Blood Essence Jewel',},
-			T{level = 84, name = 'precious Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'precious Airy Fervor Sigil',},
 			T{level = 99, name = 'precious Earthen Shielding Jewel',},
 		},
 		--Tier 9
 		T{
 			T{level = 19, name = 'flawless Earthen Essence Jewel',},
-			T{level = 41, name = 'flawless Earthen War Sigil Stone',},
+			T{level = 41, name = 'flawless Earthen War Sigil',},
 			T{level = 65, name = 'flawless Blood Essence Jewel',},
-			T{level = 84, name = 'flawless Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'flawless Airy Fervor Sigil',},
 			T{level = 99, name = 'flawless Earthen Shielding Jewel',},
 		},
 		--Tier 10
 		T{
 			T{level = 19, name = 'perfect Earthen Essence Jewel',},
-			T{level = 41, name = 'perfect Earthen War Sigil Stone',},
+			T{level = 41, name = 'perfect Earthen War Sigil',},
 			T{level = 65, name = 'perfect Blood Essence Jewel',},
-			T{level = 84, name = 'perfect Airy Fervor Sigil Stone',},
+			T{level = 84, name = 'perfect Airy Fervor Sigil',},
 			T{level = 99, name = 'perfect Earthen Shielding Jewel',},
 		},
 	},

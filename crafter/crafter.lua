@@ -237,6 +237,7 @@ local default_settings = T{
 	movetargettrain = T { false },
 	buyingMats = false;
 	isTraining = false;
+	useTrainer = T{ false, };
     vendorTargNameBuf = { 'Alastar MacDonnell' },
     vendorTargNameSize = 30,
     craftTargNameBuf = { 'Alchemy Table' },
@@ -266,6 +267,10 @@ local crafter = settings.load(default_settings);
 --pause time to buy mats and interact with vendor
 local tick_holder = hook.time.tick();
 local tick_interval = 5000;
+
+--pause time to start crafting after moving
+local craft_tick_holder = hook.time.tick();
+local craft_interval = 5000;
 
 --combo box for current craft
 --local crafter.selectedCraft = T { 11 };
@@ -380,6 +385,7 @@ hook.events.register('unload', 'unload_cb', function ()
 	crafter.isCrafting[1] = false;
 	crafter.simpleToggle[1] = false;
 	crafter.ismoving = false;
+	crafter.isTraining = false;
 	--save settings when unloading
 	settings.save();
 end);
@@ -394,7 +400,7 @@ hook.events.register('packet_recv', 'packet_recv_cb', function (e)
 		if (e.data_modified:contains('You have reached')) then
 			crafter.isCrafting[1] = false;
 			-- if eden, go visit the trainer
-			if not crafter.simpleToggle[1] and crafter.server_id[1] == 1 then
+			if not crafter.simpleToggle[1] and crafter.useTrainer[1] then
 				daoc.chat.msg(daoc.chat.message_mode.help, ('Reached max'));
 				crafter.isTraining = true;
 				crafter.buyingMats = false;
@@ -480,7 +486,7 @@ hook.events.register('d3d_present', 'd3d_present_move', function ()
     end
 
 	if (crafter.ismoving) then
-		tick_interval = math.random(5000,10000);
+		tick_interval = math.random(8000,12000);
 		if (hook.time.tick() >= (tick_holder + tick_interval) ) then	
 			tick_holder = hook.time.tick();
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('Do Tick'));
@@ -488,22 +494,25 @@ hook.events.register('d3d_present', 'd3d_present_move', function ()
 			local dist = math.distance2d(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y);
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('p: %d %d - t %d %d - d %d'):fmt(playerEnt.loc_x, playerEnt.loc_y, crafter.dest_x, crafter.dest_y, dist) );
 			if (dist < crafter.stopDist) then
-				
-				crafter.ismoving = false;
-				--crafter.dest_x = 0;
-				--crafter.dest_y = 0;
-				--sleep 3 seconds to stop
-				if (crafter.buyingMats) then
-					daoc.chat.msg(daoc.chat.message_mode.help, ('Buying Mats'));
-					checkMats();
-				elseif (crafter.isTraining) then
-					daoc.chat.msg(daoc.chat.message_mode.help, ('Training'));
-					visitTrainer();
-				else
-					daoc.chat.msg(daoc.chat.message_mode.help, ('Done running do craft'));
-					doCraft();
+				craft_tick_interval = math.random(3000,5000);
+				if (hook.time.tick() >= (craft_tick_holder + craft_tick_interval) ) then	
+					craft_tick_holder = hook.time.tick();
+
+					crafter.ismoving = false;
+					--crafter.dest_x = 0;
+					--crafter.dest_y = 0;
+					--sleep 3 seconds to stop
+					if (crafter.buyingMats) then
+						daoc.chat.msg(daoc.chat.message_mode.help, ('Buying Mats'));
+						checkMats();
+					elseif (crafter.isTraining) then
+						daoc.chat.msg(daoc.chat.message_mode.help, ('Training'));
+						visitTrainer();
+					else
+						daoc.chat.msg(daoc.chat.message_mode.help, ('Done running do craft'));
+						doCraft();
+					end
 				end
-				
 			end
 		end
 	end		
@@ -858,7 +867,7 @@ function doCraft ()
 				return;
 			end
 		end
-		daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %s'):fmt(recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name));
+		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %s'):fmt(recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name));
 		if crafter.isCrafting[1] then
 			--get the craft name
 			local craftname = recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name;
@@ -1022,7 +1031,7 @@ function checkMats()
 			--trim whitespace
 			matname = matname:clean();
 			local matval = matList[i].count;
-			daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(matval, matname));
+			--daoc.chat.msg(daoc.chat.message_mode.help, ('buy %s %s'):fmt(matval, matname));
 			local numMats = 30
 			if crafter.numMatsBuf[1]:len() > 0 then
 				numMats = tonumber(crafter.numMatsBuf[1]);
@@ -1217,9 +1226,9 @@ function get_craftid(craftName, baseMat, category)
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
 			v:each(function (_, kk)
 				if (_['profession']:lower():contains(craftName:lower())) then
-					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():startswith(category)) then
-						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(_['category']));
+					--daoc.chat.msg(daoc.chat.message_mode.help, ('incoming: %s %s | list: %s %s'):fmt(baseMat, category, _['base_material_name'], _['category']:lower()));
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():ieq(category)) then
+						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
 						craftid = _['id'];
 					end
 				end
@@ -1243,7 +1252,7 @@ function get_materials(craftName, baseMat, category)
 				if (_['profession'] == craftName) then
 					--daoc.chat.msg(daoc.chat.message_mode.help, ('base: %s %s, cat: %s %s'):fmt(_['name'], baseMat, _['category'], category));
 					if (_['name']:lower():contains(baseMat:lower()) and _['category']:lower():contains(category:lower())) then
-						daoc.chat.msg(daoc.chat.message_mode.help, ('base: %s %s, cat: %s %s'):fmt(_['name'], baseMat, _['category'], category));
+						--daoc.chat.msg(daoc.chat.message_mode.help, ('base: %s %s, cat: %s %s'):fmt(_['name'], baseMat, _['category'], category));
 						matTable = _['materials'];
 					end
 				end
@@ -1270,9 +1279,9 @@ function get_materials(craftName, baseMat, category)
 			--daoc.chat.msg(daoc.chat.message_mode.help, ('%s'):fmt(k));
 			v:each(function (_, kk)
 				if (_['profession']:lower():contains(craftName:lower())) then
-					--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():startswith(category)) then
-						
+					--daoc.chat.msg(daoc.chat.message_mode.help, ('incoming: %s %s | list: %s %s'):fmt(baseMat, category, _['base_material_name'], _['category']:lower()));
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():ieq(category)) then
+						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
 						matTable = _['materials'];
 					end
 				end
