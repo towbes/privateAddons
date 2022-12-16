@@ -22,7 +22,7 @@
 
 addon.name    = 'hunter';
 addon.author  = 'towbes';
-addon.desc    = 'Mob Finder';
+addon.desc    = 'Radar & Mob Finder (modifications and bug fixes by randomcoder)';
 addon.link    = '';
 addon.version = '1.0';
 
@@ -33,6 +33,7 @@ local imgui = require 'imgui';
 local ffi = require 'ffi';
 
 local hunter = T {
+    playerHeading = "NA",
     findNameBuf = {''},
     findNameBufSize = 100,
     playersOnly = T { false, },
@@ -136,20 +137,28 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                 end
                 if (heading >= 3840 or heading <= 256) then
                     direction = "South";
+                    hunter.playerHeading = "S";
                 elseif (heading > 256 and heading < 768) then
                     direction = "SW";
+                    hunter.playerHeading = "SW";
                 elseif (heading >= 768 and heading <= 1280) then
                     direction = "West";
+                    hunter.playerHeading = "W";
                 elseif (heading > 1280 and heading < 1792) then
                     direction = "NW";
+                    hunter.playerHeading = "NW";
                 elseif (heading >= 1792 and heading <= 2304) then
                     direction = "North";
+                    hunter.playerHeading = "N";
                 elseif (heading > 2304 and heading < 2816) then
                     direction = "NE";
+                    hunter.playerHeading = "NE";
                 elseif (heading >= 2816 and heading <= 3328) then
                     direction = "East";
+                    hunter.playerHeading = "E";
                 elseif (heading > 3328 and heading < 3840) then
                     direction = "SE";
+                    hunter.playerHeading = "SE";
                 end
 
                 if (hunter.playersOnly[1]) then
@@ -176,6 +185,8 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
         if (imgui.BeginTabBar('##hunter_tabbar', ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) then
             if (imgui.BeginTabItem('Find', nil)) then
                 imgui.Checkbox('PlayersOnly', hunter.playersOnly);
+                imgui.SameLine();
+                --imgui.Checkbox('HideGraves', hunter.hideGraves);
                 imgui.Text("Search name:")
                 imgui.SameLine();
                 imgui.PushItemWidth(350);
@@ -238,7 +249,9 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
 
     local wSizeX = 530;
     local wSizeY = 530;
-    local MaxDist = 4000;
+    local MaxDist = 5000;
+    
+
     local windowFlagsRadar = ImGuiWindowFlags_None;
 
     if (hunter.chkBoxFilterBar_LockRadar[1]) then
@@ -251,17 +264,67 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
    
     --// Radar Map Code
     imgui.SetNextWindowSize(T{ wSizeX, wSizeY, }, ImGuiCond_FirstUseEver);
-    if (imgui.Begin('Info', true, windowFlagsRadar)) then
-        local scale = 2
+    if (imgui.Begin('Info' .. hunter.playerHeading, true, windowFlagsRadar)) then
+        local scale = 1
+        local sz = 15
+
         imgui.SetWindowFontScale(scale)
         
+        -- Draw Player Arrorw On Map
         local draw_list = imgui.GetWindowDrawList();
         local mouseX, mouseY = imgui.GetCursorScreenPos();       
         local playerDotColor = imgui.GetColorU32({1, 0.3, 0.4, 1});
-        draw_list:AddCircle({(mouseX + wSizeX/2), (mouseY + wSizeY/2)}, 3+scale, playerDotColor, 6, 3+scale );
+        local center_x = mouseX + wSizeX/2 - 7
+        local center_y = mouseY + wSizeY/2 - 9
+
+        draw_list:AddRectFilled({center_x+sz-4, center_y + 14}, {center_x+4, center_y + 23}, playerDotColor)
+        draw_list:AddTriangleFilled({(center_x)+sz*0.5,(center_y)}, {(center_x)+sz, (center_y)+sz-0.5}, {(center_x), (center_y)+sz-0.5}, playerDotColor);
+    
+        --[[
+
+        -- South Arrow
+        if (hunter.playerHeading == "S") then
+            
+            draw_list:AddTriangleFilled({(center_x)+sz*0.5,(center_y+20)}, {(center_x)+sz, (center_y)+sz-0.5}, {(center_x), (center_y)+sz-0.5}, playerDotColor);
+            draw_list:AddRectFilled({center_x+sz-4, center_y + 14}, {center_x+4, center_y + 23}, playerDotColor)
+
+        -- South West Arrow
+        elseif (hunter.playerHeading == "SW") then
         
-        --draw_list:AddTriangleFilled(ImVec2(50, 100), ImVec2(100, 50), ImVec2(150, 100), ImColor(255, 0, 0))
-       
+
+        -- West Arrow
+        elseif (hunter.playerHeading == "W") then
+        
+
+        -- North West Arrow
+        elseif (hunter.playerHeading == "NW") then
+        
+
+        -- North Arrow
+        elseif (hunter.playerHeading == "N") then
+            
+            draw_list:AddRectFilled({center_x+sz-4, center_y + 14}, {center_x+4, center_y + 23}, playerDotColor)
+            draw_list:AddTriangleFilled({(center_x)+sz*0.5,(center_y)}, {(center_x)+sz, (center_y)+sz-0.5}, {(center_x), (center_y)+sz-0.5}, playerDotColor);
+
+        -- North East Arrow
+        elseif (hunter.playerHeading == "NE") then
+        
+        
+        -- East Arrow
+        elseif (hunter.playerHeading == "E") then
+        
+        
+        -- South East Arrow
+        elseif (hunter.playerHeading == "SE") then
+            draw_list:arrowButton('test',1)
+        else
+            draw_list:AddCircle({mouseX + wSizeX/2,mouseY + wSizeY/2}, 3+scale, playerDotColor, 6, 3+scale);
+        end
+
+
+        ]]
+
+
         for x=1, entList:len() do
 
                 
@@ -306,7 +369,7 @@ hook.events.register('d3d_present', 'd3d_present_1', function ()
                 draw_list:AddCircle(entityDotLoc, 3+scale, entityDotColor, 6, 3+scale);
                    
             end
-            ::continue::                   
+            ::continue::                 
         end
     end
 
