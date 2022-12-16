@@ -225,6 +225,14 @@ local default_settings = T{
     nameSize = 50,
     rangeBuf = { '350' },
     rangeSize = 5,
+    pullRangeBuf = { '1350' },
+    pullRangeSize = 5,
+    pullSpellBuf = { '' },
+    pullSpellSize = 50,
+    dmg1Buf = { '' },
+    dmg1Size = 50,
+    dmg2Buf = { '' },
+    dmg2Size = 50,
     heal1Buf = { '' },
     heal1Size = 50,
     buff1Buf = { '' },
@@ -247,6 +255,8 @@ local default_settings = T{
     buff9Size = 50,
     buff10Buf = { '' },
     buff10Size = 50,
+    buff11Buf = { '' },
+    buff11Size = 50,
     currDist = 1000,
     doneBuffing = false,
 };
@@ -328,41 +338,16 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
         tick_holder = hook.time.tick();
         if (assist.is_checked[1]) then
 
-            
-            
-
-            -- Obtain the players current target entity..
-            local target = daoc.entity.get(daoc.entity.get_target_index());
-            if (target == nil or target.initialized_flag == 0) then
-                targetByName(assist.nameBuf[1])
-                assist.currDist = 1000;
-                return;
+            --make sure range variables are set to something, if not, set to 0
+            if assist.rangeBuf[1]:len() == 0 then
+                assist.rangeBuf[1] = '0';
+            end
+            if assist.pullRangeBuf[1]:len() == 0 then
+                assist.pullRangeBuf[1] = '0';
             end
 
-            --only heal if we are targetting the assist
-            if (target.object_type == daoc.entity.type.player) then
-                if (hook.time.tick() >= (buff_holder + buff_interval) ) then
-                    buff_holder = hook.time.tick();
-                    checkBuffs();
-                end
-                if not assist.doneBuffing then
-                    return
-                end
-                if player.health < 100 then
-                    --first target ourself
-                    daoc.entity.set_target(daoc.entity.get_player_index(), 1);
-                    if (assist.heal1Buf[1]:len() > 0) then
-                        local idx = daoc.data.get_skill(assist.heal1Buf[1])
-                        if (idx ~= nil) then
-                            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
-                            daoc.game.use_skill( idx, 1 );
-                        end
-                    end
-                    return
-                end
-            end
-
-            --Look for enemies around us
+            assist.doneBuffing = false;
+            --Look for enemies close to us
             for i = 1, daoc.entity.get_count() do
                 if (daoc.entity.is_valid(i) and i ~= daoc.entity.get_player_index()) then
                     local ent = daoc.entity.get(i);
@@ -377,20 +362,90 @@ hook.events.register('d3d_present', 'd3d_present_heal', function ()
                     ::continue::
                 end
             end
+
+            -- Obtain the players current target entity..
+            local target = daoc.entity.get(daoc.entity.get_target_index());
+            if (target == nil or target.initialized_flag == 0) then
+                targetByName(assist.nameBuf[1])
+                assist.currDist = 2000;
+                return;
+            end
+
+            --only heal if we are targetting the assist
+            if (target.object_type == daoc.entity.type.player) then
+                assist.currDist = 2000;
+                if (hook.time.tick() >= (buff_holder + buff_interval) ) then
+                    buff_holder = hook.time.tick();
+                    checkBuffs();
+                end
+                if not assist.doneBuffing then
+                    return
+                end
+                if assist.heal1Buf[1]:len() > 0 and player.health < 100 then
+                    --first target ourself
+                    daoc.entity.set_target(daoc.entity.get_player_index(), 1);
+                    if (assist.heal1Buf[1]:len() > 0) then
+                        local idx = daoc.data.get_skill(assist.heal1Buf[1])
+                        if (idx ~= nil) then
+                            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                            daoc.game.use_skill( idx, 1 );
+                        end
+                    end
+                    return
+                else
+                    targetByName(assist.nameBuf[1]);
+                end
+            end
+
+            --Look for enemies to pull
+            for i = 1, daoc.entity.get_count() do
+                if assist.doneBuffing and (daoc.entity.is_valid(i) and i ~= daoc.entity.get_player_index()) then
+                    local ent = daoc.entity.get(i);
+                    if (ent ~= nil  and ent.name ~= 'horse' and ent.health > 0 and ent.object_type == daoc.entity.type.npc and ent.realm_id ~= player.realm_id) then
+                        dist = math.distance2d(ent.x, ent.y, player.x, player.y)
+                        if dist < tonumber(assist.pullRangeBuf[1]) and dist < assist.currDist and i ~= daoc.entity.get_player_index() then
+                            assist.currDist = dist;
+                            currTarget = i;
+                            daoc.entity.set_target(i, 1);
+                        end
+                    end
+                    ::continue::
+                end
+            end
             
-            daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/stick');
+            
             if target.object_type == daoc.entity.type.npc then
-                local idx = daoc.data.get_skill('Excommunicate')
-                if (idx ~= nil) then
-                    --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
-                    daoc.game.use_skill( idx, 1 );
+                -- Obtain the players current target entity..
+                local etarget = daoc.entity.get(daoc.entity.get_target_index());
+                if (etarget == nil or target.initialized_flag == 0) then
+                    return;
                 end
-                idx = nil;
-                idx = daoc.data.get_skill('Holy Staff')
-                if (idx ~= nil) then
-                    --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                local edist = math.distance2d(etarget.x, etarget.y, player.x, player.y);
+                local idx;
+                if edist > tonumber(assist.rangeBuf[1]) then
+                    daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/face');
+                    idx = daoc.data.get_skill(assist.pullSpellBuf[1])
                     daoc.game.use_skill( idx, 1 );
+                else
+                    daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/stick');
+                    if assist.dmg1Buf[1]:len() > 0 then
+                        idx = daoc.data.get_skill(assist.dmg1Buf[1])
+                        if (idx ~= nil) then
+                            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                            daoc.game.use_skill( idx, 1 );
+                        end
+                    end
+                    idx = nil;
+                    if assist.dmg2Buf[1]:len() > 0 then
+                        idx = daoc.data.get_skill(assist.dmg2Buf[1])
+                        if (idx ~= nil) then
+                            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                            daoc.game.use_skill( idx, 1 );
+                        end
+                    end
                 end
+            else
+                daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/stick');
             end
         end
     end
@@ -432,7 +487,31 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
             imgui.InputText("##assistDist", assist.rangeBuf, assist.rangeSize);
             imgui.TableNextRow();
             imgui.TableSetColumnIndex(0);;
-            imgui.Text("Assist Dist")
+            imgui.Text("Pull Spell")
+            --imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##PullSpell", assist.pullSpellBuf, assist.pullSpellSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);;
+            imgui.Text("Pull Range")
+            --imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##PullRange", assist.pullRangeBuf, assist.pullRangeSize);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);;
+            imgui.Text("Damage 1")
+            --imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##dmg1", assist.dmg1Buf, assist.dmg1Size);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);;
+            imgui.Text("Damage 2")
+            --imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##dmg2", assist.dmg2Buf, assist.dmg2Size);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);;
+            imgui.Text("Heal Spell")
             --imgui.PushItemWidth(170);
             imgui.TableNextColumn();
             imgui.InputText("##heal1", assist.heal1Buf, assist.heal1Size);
@@ -492,10 +571,16 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
             imgui.InputText("##buff9", assist.buff9Buf, assist.buff9Size);
             imgui.TableNextRow();
             imgui.TableSetColumnIndex(0);;
-            imgui.Text("Buff Ten")
+            imgui.Text("Pulse Buff")
             --imgui.PushItemWidth(170);
             imgui.TableNextColumn();
             imgui.InputText("##buff10", assist.buff10Buf, assist.buff10Size);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);;
+            imgui.Text("Pulse Buff Two")
+            --imgui.PushItemWidth(170);
+            imgui.TableNextColumn();
+            imgui.InputText("##buff11", assist.buff11Buf, assist.buff11Size);
             imgui.EndTable();
         end
         if (imgui.Button('Save', { 55, 20 })) then
@@ -551,16 +636,20 @@ hook.events.register('command', 'command_cb', function (e)
         -- Mark the command as handled, preventing the game from ever seeing it..
         e.blocked = true;
         daoc.chat.exec(daoc.chat.command_mode.typed, daoc.chat.input_mode.normal, '/stick');
-        local idx = daoc.data.get_skill('Excommunicate')
-        if (idx ~= nil) then
-            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
-            daoc.game.use_skill( idx, 1 );
+        if assist.dmg1Buf[1]:len() > 0 then
+            idx = daoc.data.get_skill(assist.dmg1Buf[1])
+            if (idx ~= nil) then
+                --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                daoc.game.use_skill( idx, 1 );
+            end
         end
         idx = nil;
-        idx = daoc.data.get_skill('Holy Staff')
-        if (idx ~= nil) then
-            --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
-            daoc.game.use_skill( idx, 1 );
+        if assist.dmg2Buf[1]:len() > 0 then
+            idx = daoc.data.get_skill(assist.dmg2Buf[1])
+            if (idx ~= nil) then
+                --daoc.chat.msg(daoc.chat.message_mode.help, ('idx: %d'):fmt(idx));
+                daoc.game.use_skill( idx, 1 );
+            end
         end
        
 
@@ -608,23 +697,52 @@ function checkBuffs()
     local mybuffs = daoc.buffs.get_buffs();
     
     --Get buffs from UI
-    confbuffs:append(assist.buff1Buf[1]);
-    confbuffs:append(assist.buff2Buf[1]);
-    confbuffs:append(assist.buff3Buf[1]);
-    confbuffs:append(assist.buff4Buf[1]);
-    confbuffs:append(assist.buff5Buf[1]);
-    confbuffs:append(assist.buff6Buf[1]);
-    confbuffs:append(assist.buff7Buf[1]);
-    confbuffs:append(assist.buff8Buf[1]);
-    confbuffs:append(assist.buff9Buf[1]);
-    confbuffs:append(assist.buff10Buf[1]);
+    if assist.buff1Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff1Buf[1]);
+    end
+    if assist.buff2Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff2Buf[1]);
+    end
+    if assist.buff3Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff3Buf[1]);
+    end
+    if assist.buff4Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff4Buf[1]);
+    end
+    if assist.buff5Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff5Buf[1]);
+    end
+    if assist.buff6Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff6Buf[1]);
+    end
+    if assist.buff7Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff7Buf[1]);
+    end
+    if assist.buff8Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff8Buf[1]);
+    end
+    if assist.buff9Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff9Buf[1]);
+    end
+    if assist.buff10Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff10Buf[1]);
+    end
+    if assist.buff11Buf[1]:len() > 0 then
+        confbuffs:append(assist.buff11Buf[1]);
+    end
     local bcheck = false;
     for i=1, confbuffs:len() do
         --check if we have the buff
         bcheck = false;
         for n=0, 74 do
             if mybuffs[n].name:len() > 0 and mybuffs[n].name:ieq(confbuffs[i]) then
-                bcheck = true;
+                if confbuffs[i]:ieq(assist.buff10Buf[1]) or confbuffs[i]:ieq(assist.buff11Buf[1]) then
+                    bcheck = true;
+                else
+                    if (mybuffs[n].time_remaining > 60000) then
+                        bcheck = true;
+                    end
+                end
             end
         end
         --if we didn't find the buff, cast it
