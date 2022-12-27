@@ -554,8 +554,8 @@ hook.events.register('d3d_present', 'd3d_present_cb', function ()
 				if (imgui.Button('Start', { 55, 20 })) then
 					load_recipes();
 					load_paths();
-					--check if inventory is empty
-					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 39) then
+					--check if inventory is empty or only 1 or 2 slots (in case you leave bind stone in)
+					if (empty_slots(crafter.minSlotBuf[1], crafter.maxSlotBuf[1]) > 36) then
 						checkMats();
 					else
 						doCraft();
@@ -867,7 +867,7 @@ function doCraft ()
 				return;
 			end
 		end
-		--daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %s'):fmt(recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name));
+		daoc.chat.msg(daoc.chat.message_mode.help, ('Send Item %s'):fmt(recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name));
 		if crafter.isCrafting[1] then
 			--get the craft name
 			local craftname = recipeList[selCraft][realmId][crafter.currTier][crafter.currCraft].name;
@@ -1227,7 +1227,7 @@ function get_craftid(craftName, baseMat, category)
 			v:each(function (_, kk)
 				if (_['profession']:lower():contains(craftName:lower())) then
 					--daoc.chat.msg(daoc.chat.message_mode.help, ('incoming: %s %s | list: %s %s'):fmt(baseMat, category, _['base_material_name'], _['category']:lower()));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():ieq(category)) then
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():contains(category:lower())) then
 						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
 						craftid = _['id'];
 					end
@@ -1280,7 +1280,7 @@ function get_materials(craftName, baseMat, category)
 			v:each(function (_, kk)
 				if (_['profession']:lower():contains(craftName:lower())) then
 					--daoc.chat.msg(daoc.chat.message_mode.help, ('incoming: %s %s | list: %s %s'):fmt(baseMat, category, _['base_material_name'], _['category']:lower()));
-					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():ieq(category)) then
+					if (_['base_material_name']:ieq(baseMat) and _['category']:lower():contains(category:lower())) then
 						--daoc.chat.msg(daoc.chat.message_mode.help, ('%s %s'):fmt(_['category'], category));
 						matTable = _['materials'];
 					end
